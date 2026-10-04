@@ -1,0 +1,40 @@
+TM Timer 배포 방법 (Cloudflare Pages + D1, 모두 무료)
+=====================================================
+
+폴더 구성
+  public\            사이트 파일 (index.html, favicon.svg, robots.txt)
+  functions\api\     세계 순위 서버 코드 (ranking.js)
+  schema.sql         순위 데이터베이스 표 만들기
+  wrangler.toml      Cloudflare 설정
+
+※ 세계 순위 때문에 서버 코드가 들어 있어서, Cloudflare 화면에 폴더를 끌어다 놓는 방식으로는
+  순위가 작동하지 않습니다. 아래 명령어로 올려야 합니다. (처음 한 번만 길고, 그다음엔 4단계만)
+
+이 폴더에서 PowerShell 을 엽니다 (폴더 빈 곳에서 Shift+우클릭 → "PowerShell 창 열기" 또는 "터미널에서 열기").
+
+1단계. Cloudflare 로그인 (브라우저가 열리면 허용)
+    npx wrangler login
+
+2단계. 순위용 데이터베이스 만들기
+    npx wrangler d1 create tm-timer
+  → 출력에 나오는 database_id = "xxxxxxxx-...." 값을 복사해서
+    wrangler.toml 의 database_id 자리에 붙여넣고 저장
+
+3단계. 데이터베이스에 표 만들기
+    npx wrangler d1 execute tm-timer --remote --file=schema.sql
+
+4단계. 사이트 올리기 (수정할 때마다 이것만 다시 실행)
+    npx wrangler pages deploy
+
+  → 처음엔 프로젝트를 새로 만들지 물어보면 만든다고 답하고, production 브랜치는 main 으로.
+  → 끝나면 https://tm-timer.pages.dev 같은 주소가 나옵니다.
+    (이름이 이미 있으면 wrangler.toml 의 name 을 바꾸고 다시 실행)
+
+5단계. 방문자 통계 켜기
+  Cloudflare 대시보드 → Workers & Pages → tm-timer → Metrics(또는 Web Analytics) 에서 켜기
+
+세계 순위 규칙
+  - 공부 시간은 시작 시각을 서버가 기록하고, 일시정지·단계 종료·창 닫기 때 그동안 공부한 분이 저장됩니다.
+  - 서버는 '시작 이후 실제로 흐른 시간'보다 많이 저장하지 않습니다 (연타·조작 방지).
+  - 하루(UTC 0시 = 한국 오전 9시 기준) 2시간 이상 공부한 사람만, 상위 20위까지 표시합니다.
+  - 공개되는 정보: 닉네임, 국가(접속 위치로 자동), 오늘 공부 시간.

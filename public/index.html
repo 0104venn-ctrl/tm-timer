@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TM Timer - 포모도로 기법, 공부 타이머, 효율적인 공부 타이머</title>
+<meta name="description" content="25분 공부·5분 휴식을 자동으로 반복하는 무료 포모도로 타이머. 4회마다 긴 휴식, 전환 알림음, 다른 창 위에 띄우는 미니 타이머, 오늘의 세계 공부 순위. 한국어·English·日本語·中文 지원.">
+<meta property="og:title" content="TM Timer - 포모도로 기법, 공부 타이머, 효율적인 공부 타이머">
+<meta property="og:description" content="25분 공부·5분 휴식을 자동으로 반복하는 무료 포모도로 타이머. 4회마다 긴 휴식, 전환 알림음, 다른 창 위에 띄우는 미니 타이머, 오늘의 세계 공부 순위. 한국어·English·日本語·中文 지원.">
+<meta property="og:type" content="website">
+<meta name="google-site-verification" content="ETppSoEdnNys6bcgo0uFKv6rq9r2bAw35aHeZm3G8tQ">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@700&family=Noto+Sans+KR:wght@400;600;800&display=swap">
+<style>
+body{margin:0}
+/* 레이아웃: 3열 — 왼쪽 진행 방식 / 가운데 다이얼 / 오른쪽 시간 설정. 좁으면 다이얼 먼저 한 열로 */
+:root{
+  --bg:#ffffff; --surface:#f3f8f4; --fg:#16271d; --muted:#6a7c71; --line:#e1ebe4;
+  --study:#1e8e4e; --rest:#6cc08a; --long:#0e7c72;
+  --accent:var(--study); --accent-ink:#ffffff; --accent-soft:#e3f3e8;
+  --display:"Bricolage Grotesque","Noto Sans KR",system-ui,sans-serif;
+  --body:"Noto Sans KR","Yu Gothic UI","Microsoft YaHei UI",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  color-scheme:light;
+}
+body[data-mode="rest"]{--accent:var(--rest);--accent-ink:#0f2a19;--accent-soft:#eef8f1}
+body[data-mode="long"]{--accent:var(--long);--accent-ink:#ffffff;--accent-soft:#e2f2f0}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:28px 48px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px) minmax(0,1fr);gap:28px 40px;align-items:start}
+.timer{display:flex;flex-direction:column;align-items:center;gap:22px;min-width:0}
+@media (max-width:1020px){.wrap{grid-template-columns:minmax(0,1fr);max-width:520px}.timer{order:1}.leftcol{order:2}.setup{order:3}}
+header.top{grid-column:1/-1;width:100%;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+h1{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0;display:flex;align-items:center;gap:10px;color:var(--study)}
+h1 .leaf{width:22px;height:22px}
+.ghost{background:var(--bg);border:1px solid var(--line);color:var(--fg);border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+.hdr-r{display:flex;gap:8px;align-items:center;justify-self:end}
+.tabs{display:flex;gap:4px;background:var(--surface);border-radius:999px;padding:4px}
+.tabs button{border:0;background:none;color:var(--muted);font:600 14px var(--body);padding:8px 18px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.tabs button:hover{color:var(--study)}
+.tabs button[aria-selected="true"]{background:var(--study);color:#fff}
+@media (max-width:640px){header.top{grid-template-columns:1fr auto}.tabs{grid-column:1/-1;order:3;justify-self:center}}
+select.lang{font:inherit;font-size:13px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;cursor:pointer}
+select.lang:focus-visible{outline:2px solid var(--study);outline-offset:2px}
+.ghost:hover{border-color:var(--study);color:var(--study)}
+
+.phases{display:flex;gap:6px;font-size:14px;font-weight:600;flex-wrap:wrap;justify-content:center}
+.phases span{padding:6px 14px;border-radius:999px;color:var(--muted);background:var(--surface);transition:background .3s,color .3s}
+.phases span.on{background:var(--accent);color:var(--accent-ink)}
+
+.dial{position:relative;width:min(100%,360px);aspect-ratio:1;max-width:100%}
+.dial svg{width:100%;height:100%;display:block}
+.readout{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.time{font-family:var(--mono);font-weight:700;font-size:clamp(52px,15vw,76px);letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.sub{font-size:13px;color:var(--muted)}
+.dots{display:flex;gap:6px}
+.dots i{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots i.on{background:var(--study)}
+
+.controls{display:flex;gap:10px;align-items:center}
+.big{background:var(--accent);color:var(--accent-ink);border:0;border-radius:14px;font-family:var(--display);font-weight:800;font-size:20px;padding:14px 0;width:160px;cursor:pointer;box-shadow:0 4px 0 color-mix(in srgb,var(--accent) 65%,#000);transition:transform .08s,box-shadow .08s,background .3s}
+.big:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--accent) 65%,#000)}
+.round{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer;display:grid;place-items:center}
+.round:hover{border-color:var(--study);color:var(--study)}
+.round svg{width:20px;height:20px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--study);outline-offset:2px}
+
+.pip{display:flex;align-items:center;gap:8px;background:var(--accent-soft);border:1px solid transparent;color:var(--fg);border-radius:10px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer;transition:background .3s}
+.pip:hover{border-color:var(--study)}
+.pip svg{width:18px;height:18px;color:var(--study)}
+.note{font-size:13px;color:var(--muted);text-align:center;max-width:42ch;min-height:1.5em}
+.hint{font-size:12px;color:var(--muted)}
+kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--line);border-radius:4px;padding:1px 5px;background:var(--surface)}
+
+
+
+.panel{border:1px solid var(--line);border-radius:16px;padding:22px;background:var(--bg);display:flex;flex-direction:column;gap:16px;min-width:0;margin-top:52px}
+@media (max-width:1020px){.panel{margin-top:0}}
+.panel h2{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.01em;margin:0;color:var(--study)}
+ol.steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px;counter-reset:st}
+ol.steps li{counter-increment:st;display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;align-items:start;font-size:14px;line-height:1.55}
+ol.steps li::before{content:counter(st);width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--study);font-family:var(--mono);font-weight:700;font-size:13px;display:grid;place-items:center}
+ol.steps b{color:var(--study)}
+.cyc{display:flex;flex-direction:column;gap:8px}
+.cyc-bar{display:flex;gap:2px;height:14px;border-radius:7px;overflow:hidden}
+.cyc-bar i{display:block;min-width:3px}
+.cyc-bar .s{background:var(--study)} .cyc-bar .r{background:var(--rest)} .cyc-bar .l{background:var(--long)}
+.cyc-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--muted)}
+.cyc-legend span{display:inline-flex;align-items:center;gap:6px}
+.cyc-legend span::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--c)}
+.cyc-total{font-size:13px;color:var(--fg);font-weight:600}
+.cyc-total small{font-family:var(--mono);color:var(--study);font-size:13px}
+
+.row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.rows .row:first-child{border-top:0;padding-top:0}
+.row.off{opacity:.4}
+.row label{font-size:14px;font-weight:600}
+.row .u{font-size:12px;color:var(--muted);min-width:3.5em}
+.num{display:flex;align-items:center;gap:6px}
+.num button{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--study);font:700 16px var(--mono);cursor:pointer;line-height:1}
+.num button:hover:not(:disabled){border-color:var(--study);background:var(--accent-soft)}
+.num button:disabled{cursor:default}
+input{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+input[type=number]{width:58px;font-family:var(--mono);font-weight:700;text-align:center;-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=range]{width:130px;padding:0;accent-color:var(--study);background:none;border:0}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--study);margin:0}
+.presets{display:flex;flex-direction:column;gap:8px}
+.presets .lbl{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.presets .chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:6px 12px;font:600 13px var(--mono);cursor:pointer}
+.chip:hover{border-color:var(--study)}
+.chip[aria-pressed="true"]{background:var(--study);border-color:var(--study);color:#fff}
+.small-note{font-size:12px;color:var(--muted);margin:0}
+.leftcol{display:flex;flex-direction:column;gap:20px;min-width:0;margin-top:52px}
+.leftcol .panel{margin-top:0}
+@media (max-width:1020px){.leftcol{margin-top:0}}
+.kw-dial{width:100%;max-width:150px;aspect-ratio:1;margin:0 auto;user-select:none;-webkit-user-select:none;pointer-events:none}
+.kw-dial svg{width:100%;height:100%;display:block;overflow:visible}
+.kw-words text{fill:var(--study);font-family:var(--body);font-size:11px;font-weight:600}
+.kw-ring{fill:none;stroke:var(--accent-soft);stroke-width:6}
+.kw-ticks line{stroke:var(--study);stroke-linecap:round;opacity:.55}
+.kw-hand{stroke:var(--study);stroke-width:3;stroke-linecap:round}
+.kw-hand.thin{stroke-width:2;opacity:.7}
+.kw-pin{fill:var(--study)}
+body[data-view="rank"] .leftcol,body[data-view="rank"] .timer,body[data-view="rank"] .setup{display:none}
+.rankview{display:none}
+body[data-view="rank"] .rankview{display:flex}
+.rankview{grid-column:1/-1;width:100%;max-width:980px;margin:0 auto;flex-direction:column;gap:20px;min-width:0}
+.rank-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.rank-head h2{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin:0;color:var(--study);text-wrap:balance}
+.rank-sub{margin:4px 0 0;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rank-me{display:flex;justify-content:space-between;align-items:center;gap:16px 24px;flex-wrap:wrap;background:var(--accent-soft);border-radius:16px;padding:18px 22px}
+.me-stats{display:flex;gap:28px;flex-wrap:wrap}
+.me-stats div{display:flex;flex-direction:column;gap:2px}
+.me-stats .k{font-size:12px;color:var(--muted)}
+.me-stats b{font-family:var(--mono);font-size:24px;color:var(--fg);font-variant-numeric:tabular-nums}
+.me-need{flex-basis:100%;order:3;margin:0;font-size:13px;font-weight:600;color:var(--study)}
+.name-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.name-form label{font-size:13px;font-weight:600}
+.name-form input{width:170px;background:var(--bg)}
+.primary{background:var(--study);color:#fff;border:0;border-radius:8px;padding:8px 16px;font:inherit;font-weight:600;cursor:pointer}
+.rank-cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:800px){.rank-cols{grid-template-columns:minmax(0,1fr)}}
+.rank-card{border:1px solid var(--line);border-radius:16px;padding:18px 18px 10px;min-width:0}
+.rank-card h3{font-family:var(--display);font-size:17px;margin:0 0 8px;color:var(--study)}
+ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
+.board li{display:grid;grid-template-columns:34px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 6px;border-top:1px solid var(--line);font-size:14px;border-radius:8px}
+.board li:first-child{border-top:0}
+.board .pos{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--muted);width:28px;height:28px;border-radius:50%;display:grid;place-items:center}
+.board li.r1 .pos{background:var(--study);color:#fff}
+.board li.r2 .pos{background:var(--rest);color:#0f2a19}
+.board li.r3 .pos{background:var(--accent-soft);color:var(--study)}
+.board .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.board .cc{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.board .mm{font-family:var(--mono);font-weight:700;color:var(--study);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.board li.mine{background:var(--accent-soft)}
+.board li.mine .nm::after{content:attr(data-me);margin-left:6px;font-size:11px;font-weight:700;color:#fff;background:var(--study);border-radius:999px;padding:1px 7px}
+.board .empty{display:block;color:var(--muted);font-size:13px;padding:14px 4px;border:0}
+.rank-note{font-size:12px;color:var(--muted);margin:0}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--study);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast.show{opacity:1}
+#pipVideo{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <h1><svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="7"/><path d="M12 7c0-2 1-4 3-4"/><path d="M12 7c-1.5-1.6-3.5-2-5-1.5"/></svg>TM Timer</h1>
+    <nav class="tabs" role="tablist" aria-label="View"><button type="button" role="tab" id="tab-timer" data-i="tabTimer"></button><button type="button" role="tab" id="tab-rank" data-i="tabRank"></button></nav>
+    <div class="hdr-r"><select class="lang" id="lang" aria-label="Language"><option value="en">English</option><option value="ko">한국어</option><option value="ja">日本語</option><option value="zh">中文</option></select></div>
+  </header>
+
+  <div class="leftcol">
+  <aside class="panel howto" aria-labelledby="howTitle">
+    <h2 id="howTitle" data-i="howTitle"></h2>
+    <ol class="steps" id="steps"></ol>
+    <div class="cyc">
+      <div class="cyc-total" id="cycTotal"></div>
+      <div class="cyc-bar" id="cycBar" aria-hidden="true"></div>
+      <div class="cyc-legend"><span style="--c:var(--study)" data-i="study"></span><span style="--c:var(--rest)" data-i="rest"></span><span style="--c:var(--long)" data-i="long" id="lgLong"></span></div>
+    </div>
+  </aside>
+    <div class="kw-dial" aria-label="Pomodoro timer · 공부 타이머 · ポモドーロ · 番茄钟">
+      <svg viewBox="0 0 300 300">
+        <g class="kw-words">
+          <text x="208" y="150" transform="rotate(-90.0 150 150)" dominant-baseline="middle" opacity="1">공부 타이머</text><text x="208" y="150" transform="rotate(-75.0 150 150)" dominant-baseline="middle" opacity=".62">pomodoro timer</text><text x="208" y="150" transform="rotate(-60.0 150 150)" dominant-baseline="middle" opacity="1">ポモドーロ</text><text x="208" y="150" transform="rotate(-45.0 150 150)" dominant-baseline="middle" opacity=".62">番茄钟</text><text x="208" y="150" transform="rotate(-30.0 150 150)" dominant-baseline="middle" opacity="1">뽀모도로</text><text x="208" y="150" transform="rotate(-15.0 150 150)" dominant-baseline="middle" opacity=".62">study timer</text><text x="208" y="150" transform="rotate(0.0 150 150)" dominant-baseline="middle" opacity="1">勉強タイマー</text><text x="208" y="150" transform="rotate(15.0 150 150)" dominant-baseline="middle" opacity=".62">番茄工作法</text><text x="208" y="150" transform="rotate(30.0 150 150)" dominant-baseline="middle" opacity="1">포모도로 기법</text><text x="208" y="150" transform="rotate(45.0 150 150)" dominant-baseline="middle" opacity=".62">focus timer</text><text x="208" y="150" transform="rotate(60.0 150 150)" dominant-baseline="middle" opacity="1">集中タイマー</text><text x="208" y="150" transform="rotate(75.0 150 150)" dominant-baseline="middle" opacity=".62">学习计时器</text><text x="208" y="150" transform="rotate(90.0 150 150)" dominant-baseline="middle" opacity="1">집중 타이머</text><text x="92" y="150" transform="rotate(285.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">tomato timer</text><text x="92" y="150" transform="rotate(300.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity="1">作業タイマー</text><text x="92" y="150" transform="rotate(315.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">专注计时器</text><text x="92" y="150" transform="rotate(330.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity="1">스터디 타이머</text><text x="92" y="150" transform="rotate(345.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">study with me</text><text x="92" y="150" transform="rotate(360.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity="1">勉強法</text><text x="92" y="150" transform="rotate(375.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">在线番茄钟</text><text x="92" y="150" transform="rotate(390.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity="1">25분 타이머</text><text x="92" y="150" transform="rotate(405.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">productivity</text><text x="92" y="150" transform="rotate(420.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity="1">タイマーアプリ</text><text x="92" y="150" transform="rotate(435.0 150 150)" dominant-baseline="middle" text-anchor="end" opacity=".62">学习打卡</text>
+        </g>
+        <circle cx="150" cy="150" r="52" class="kw-ring"/>
+        <g class="kw-ticks"><line x1="150.0" y1="110.0" x2="150.0" y2="102.0" stroke-width="1.6"/><line x1="154.6" y1="106.2" x2="155.0" y2="102.3" stroke-width="0.8"/><line x1="159.1" y1="107.0" x2="160.0" y2="103.0" stroke-width="0.8"/><line x1="163.6" y1="108.2" x2="164.8" y2="104.3" stroke-width="0.8"/><line x1="167.9" y1="109.8" x2="169.5" y2="106.1" stroke-width="0.8"/><line x1="170.0" y1="115.4" x2="174.0" y2="108.4" stroke-width="1.6"/><line x1="175.9" y1="114.4" x2="178.2" y2="111.2" stroke-width="0.8"/><line x1="179.4" y1="117.3" x2="182.1" y2="114.3" stroke-width="0.8"/><line x1="182.7" y1="120.6" x2="185.7" y2="117.9" stroke-width="0.8"/><line x1="185.6" y1="124.1" x2="188.8" y2="121.8" stroke-width="0.8"/><line x1="184.6" y1="130.0" x2="191.6" y2="126.0" stroke-width="1.6"/><line x1="190.2" y1="132.1" x2="193.9" y2="130.5" stroke-width="0.8"/><line x1="191.8" y1="136.4" x2="195.7" y2="135.2" stroke-width="0.8"/><line x1="193.0" y1="140.9" x2="197.0" y2="140.0" stroke-width="0.8"/><line x1="193.8" y1="145.4" x2="197.7" y2="145.0" stroke-width="0.8"/><line x1="190.0" y1="150.0" x2="198.0" y2="150.0" stroke-width="1.6"/><line x1="193.8" y1="154.6" x2="197.7" y2="155.0" stroke-width="0.8"/><line x1="193.0" y1="159.1" x2="197.0" y2="160.0" stroke-width="0.8"/><line x1="191.8" y1="163.6" x2="195.7" y2="164.8" stroke-width="0.8"/><line x1="190.2" y1="167.9" x2="193.9" y2="169.5" stroke-width="0.8"/><line x1="184.6" y1="170.0" x2="191.6" y2="174.0" stroke-width="1.6"/><line x1="185.6" y1="175.9" x2="188.8" y2="178.2" stroke-width="0.8"/><line x1="182.7" y1="179.4" x2="185.7" y2="182.1" stroke-width="0.8"/><line x1="179.4" y1="182.7" x2="182.1" y2="185.7" stroke-width="0.8"/><line x1="175.9" y1="185.6" x2="178.2" y2="188.8" stroke-width="0.8"/><line x1="170.0" y1="184.6" x2="174.0" y2="191.6" stroke-width="1.6"/><line x1="167.9" y1="190.2" x2="169.5" y2="193.9" stroke-width="0.8"/><line x1="163.6" y1="191.8" x2="164.8" y2="195.7" stroke-width="0.8"/><line x1="159.1" y1="193.0" x2="160.0" y2="197.0" stroke-width="0.8"/><line x1="154.6" y1="193.8" x2="155.0" y2="197.7" stroke-width="0.8"/><line x1="150.0" y1="190.0" x2="150.0" y2="198.0" stroke-width="1.6"/><line x1="145.4" y1="193.8" x2="145.0" y2="197.7" stroke-width="0.8"/><line x1="140.9" y1="193.0" x2="140.0" y2="197.0" stroke-width="0.8"/><line x1="136.4" y1="191.8" x2="135.2" y2="195.7" stroke-width="0.8"/><line x1="132.1" y1="190.2" x2="130.5" y2="193.9" stroke-width="0.8"/><line x1="130.0" y1="184.6" x2="126.0" y2="191.6" stroke-width="1.6"/><line x1="124.1" y1="185.6" x2="121.8" y2="188.8" stroke-width="0.8"/><line x1="120.6" y1="182.7" x2="117.9" y2="185.7" stroke-width="0.8"/><line x1="117.3" y1="179.4" x2="114.3" y2="182.1" stroke-width="0.8"/><line x1="114.4" y1="175.9" x2="111.2" y2="178.2" stroke-width="0.8"/><line x1="115.4" y1="170.0" x2="108.4" y2="174.0" stroke-width="1.6"/><line x1="109.8" y1="167.9" x2="106.1" y2="169.5" stroke-width="0.8"/><line x1="108.2" y1="163.6" x2="104.3" y2="164.8" stroke-width="0.8"/><line x1="107.0" y1="159.1" x2="103.0" y2="160.0" stroke-width="0.8"/><line x1="106.2" y1="154.6" x2="102.3" y2="155.0" stroke-width="0.8"/><line x1="110.0" y1="150.0" x2="102.0" y2="150.0" stroke-width="1.6"/><line x1="106.2" y1="145.4" x2="102.3" y2="145.0" stroke-width="0.8"/><line x1="107.0" y1="140.9" x2="103.0" y2="140.0" stroke-width="0.8"/><line x1="108.2" y1="136.4" x2="104.3" y2="135.2" stroke-width="0.8"/><line x1="109.8" y1="132.1" x2="106.1" y2="130.5" stroke-width="0.8"/><line x1="115.4" y1="130.0" x2="108.4" y2="126.0" stroke-width="1.6"/><line x1="114.4" y1="124.1" x2="111.2" y2="121.8" stroke-width="0.8"/><line x1="117.3" y1="120.6" x2="114.3" y2="117.9" stroke-width="0.8"/><line x1="120.6" y1="117.3" x2="117.9" y2="114.3" stroke-width="0.8"/><line x1="124.1" y1="114.4" x2="121.8" y2="111.2" stroke-width="0.8"/><line x1="130.0" y1="115.4" x2="126.0" y2="108.4" stroke-width="1.6"/><line x1="132.1" y1="109.8" x2="130.5" y2="106.1" stroke-width="0.8"/><line x1="136.4" y1="108.2" x2="135.2" y2="104.3" stroke-width="0.8"/><line x1="140.9" y1="107.0" x2="140.0" y2="103.0" stroke-width="0.8"/><line x1="145.4" y1="106.2" x2="145.0" y2="102.3" stroke-width="0.8"/></g>
+        <line x1="150" y1="150" x2="150" y2="116" class="kw-hand"/>
+        <line x1="150" y1="150" x2="173" y2="163" class="kw-hand thin"/>
+        <circle cx="150" cy="150" r="3.5" class="kw-pin"/>
+      </svg>
+    </div>
+  </div>
+
+  <section class="timer">
+  <div class="phases" aria-hidden="true"><span id="p-study" data-i="study"></span><span id="p-rest" data-i="rest"></span><span id="p-long" data-i="long"></span></div>
+
+  <div class="dial">
+    <svg viewBox="0 0 300 300" aria-hidden="true">
+      <g id="ticks"></g>
+      <circle cx="150" cy="150" r="118" fill="none" stroke="var(--surface)" stroke-width="14"/>
+      <circle id="arc" cx="150" cy="150" r="118" fill="none" stroke="var(--accent)" stroke-width="14"
+        stroke-linecap="round" transform="rotate(-90 150 150)" style="transition:stroke .3s"/>
+    </svg>
+    <div class="readout">
+      <div class="time" id="time" role="timer">25:00</div>
+      <div class="dots" id="dots"></div>
+      <div class="sub" id="sub"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="round" id="reset" type="button" data-it="resetTitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+    </button>
+    <button class="big" id="toggle" type="button"></button>
+    <button class="round" id="skip" type="button" data-it="skipTitle">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l10 7-10 7z"/><path d="M19 5v14"/></svg>
+    </button>
+  </div>
+
+  <button class="pip" id="pipBtn" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><rect x="12" y="12" width="8" height="6" rx="1" fill="currentColor"/></svg>
+    <span id="pipLabel"></span>
+  </button>
+  <div class="note" id="note"></div>
+  <div class="hint" id="hint"></div>
+  </section>
+
+  <aside class="panel setup" aria-labelledby="setupTitle">
+    <h2 id="setupTitle" data-i="setupTitle"></h2>
+    <div class="presets">
+      <span class="lbl" data-i="presets"></span>
+      <div class="chips" id="presets">
+        <button class="chip" type="button" data-p="25,5,15">25 / 5 / 15</button>
+        <button class="chip" type="button" data-p="50,10,30">50 / 10 / 30</button>
+        <button class="chip" type="button" data-p="90,20,30">90 / 20 / 30</button>
+      </div>
+    </div>
+    <div class="rows">
+      <div class="row"><label for="set-study" data-i="study"></label><span class="num"><button type="button" data-step="study,-1" aria-label="−">−</button><input type="number" id="set-study" min="1" max="180"><button type="button" data-step="study,1" aria-label="+">+</button><span class="u" data-i="min"></span></span></div>
+      <div class="row"><label for="set-rest" data-i="rest"></label><span class="num"><button type="button" data-step="rest,-1" aria-label="−">−</button><input type="number" id="set-rest" min="1" max="60"><button type="button" data-step="rest,1" aria-label="+">+</button><span class="u" data-i="min"></span></span></div>
+      <div class="row"><label for="set-longOn" data-i="setLongOn"></label><input type="checkbox" id="set-longOn"></div>
+      <div class="row" id="r-long"><label for="set-long" data-i="long"></label><span class="num"><button type="button" data-step="long,-1" aria-label="−">−</button><input type="number" id="set-long" min="1" max="90"><button type="button" data-step="long,1" aria-label="+">+</button><span class="u" data-i="min"></span></span></div>
+      <div class="row" id="r-every"><label for="set-every" data-i="setEvery"></label><span class="num"><button type="button" data-step="every,-1" aria-label="−">−</button><input type="number" id="set-every" min="2" max="10"><button type="button" data-step="every,1" aria-label="+">+</button><span class="u" data-i="everyUnit"></span></span></div>
+      <div class="row"><label for="set-vol" data-i="setVol"></label><span class="num"><input type="range" id="set-vol" min="0" max="1" step="0.05"><button type="button" id="testSound" data-it="testSound" aria-label="test">♪</button></span></div>
+    </div>
+    <p class="small-note" data-i="applyNext"></p>
+  </aside>
+
+  <section class="rankview" aria-labelledby="rankTitle">
+    <div class="rank-head">
+      <div><h2 id="rankTitle" data-i="rankTitle"></h2><p class="rank-sub" id="rankSub"></p></div>
+      <button class="ghost" type="button" id="rankRefresh" data-i="refresh"></button>
+    </div>
+    <div class="rank-me">
+      <div class="me-stats">
+        <div><span class="k" data-i="yourRank"></span><b id="meRank">–</b></div>
+        <div><span class="k" data-i="yourToday"></span><b id="meMin">–</b></div>
+        <div><span class="k" data-i="studyingToday"></span><b id="totPeople">–</b></div>
+      </div>
+      <p class="me-need" id="meNeed"></p>
+      <form class="name-form" id="nameForm">
+        <label for="nick" data-i="nickname"></label>
+        <input id="nick" maxlength="16" autocomplete="nickname">
+        <button class="primary" type="submit" data-i="saveName"></button>
+      </form>
+    </div>
+    <div class="rank-cols">
+      <div class="rank-card"><h3 data-i="individuals"></h3><ol class="board" id="boardPeople"></ol></div>
+      <div class="rank-card"><h3 data-i="countries"></h3><ol class="board" id="boardCountries"></ol></div>
+    </div>
+    <p class="rank-note" data-i="rankNote"></p>
+  </section>
+</div>
+
+
+<video id="pipVideo" muted playsinline></video>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const BASE_TITLE = document.title;
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem('tm:'+k); return v ? JSON.parse(v) : d; } catch { return d; } },
+    set(k, v){ try { localStorage.setItem('tm:'+k, JSON.stringify(v)); } catch {} }
+  };
+  const dayKey = () => new Date().toDateString();
+  const L = {
+    en:{ onBoard:"You're on today's board.", needMore:'{d} more to get on the board (2 hours)', tabTimer:'Timer', tabRank:'World Ranking', rankTitle:"Today's world ranking", resetIn:'{day} UTC · resets in {d}', refresh:'Refresh', yourRank:'Your rank', yourToday:'Your focus today', studyingToday:'On the board', peopleN:'{n} people', nickname:'Nickname', saveName:'Save', nameSaved:'Nickname saved', individuals:'Top 20', countries:'Countries', meTag:'You', emptyRank:'No one has studied 2 hours yet today. Be the first.', offline:'The ranking works on the published site. It is not available here.', rankNote:'Only people with 2+ hours of focus today are ranked (top 20). Focus time is saved when you pause, finish a phase or close the page. The day resets at 00:00 UTC. Shown publicly: nickname, country and today\'s focus time.',
+      howTitle:'How it works', setupTitle:'Your times', presets:'Quick picks', cycle:'One full cycle', durH:'{h}h {m}m', durM:'{m} min', applyNext:'Changes made while the timer runs apply from the next phase.', s1:'Press <b>Start</b>. A {study}-min focus session begins.', s2:'When it ends, a chime plays and a {rest}-min break starts on its own.', s3:'After the break, the next focus session starts automatically. It keeps looping until you pause.', s4:'After every {every}th focus session you get a {long}-min long break instead.', s4off:'Long breaks are off, so it simply alternates focus and break.', s5:'Pop out the mini timer to keep the countdown on top of other windows.',
+      settings:'Settings', study:'Focus', rest:'Break', long:'Long break', start:'Start', pause:'Pause', resume:'Resume',
+      today:'{n} done today', paused:'Paused · ', dots:'{n} more until long break', resetTitle:'Restart from focus', skipTitle:'Skip to next phase',
+      pipOpen:'Pop out mini timer', pipClose:'Close mini timer', note:'The mini timer stays on top of other windows, even when the browser is minimized.',
+      noteFail:'This browser does not support the mini timer. Open it in the latest Chrome or Edge.',
+      hint:'<kbd>Space</kbd> start/pause · <kbd>R</kbd> restart · <kbd>N</kbd> skip · <kbd>P</kbd> mini timer',
+      setLongOn:'Use long breaks', setEvery:'Long break every', setVol:'Alert volume', min:'min', everyUnit:'sessions', testSound:'Test sound', save:'Save',
+      toStudy:'Break over. {m}-min focus starts', toRest:'Focus done. {m}-min {name} starts', saved:'Settings saved. Time changes apply from the next phase.' },
+    ko:{ onBoard:'오늘 순위에 올랐습니다.', needMore:'순위 진입까지 {d} 남았습니다 (2시간 기준)', tabTimer:'타이머', tabRank:'세계 순위', rankTitle:'오늘의 세계 공부 순위', resetIn:'{day} UTC 기준 · {d} 후 초기화', refresh:'새로고침', yourRank:'내 순위', yourToday:'오늘 내 공부', studyingToday:'순위 진입', peopleN:'{n}명', nickname:'닉네임', saveName:'저장', nameSaved:'닉네임을 저장했습니다', individuals:'개인 순위 TOP 20', countries:'국가 순위', meTag:'나', emptyRank:'오늘 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', offline:'순위는 배포된 사이트에서 작동합니다. 여기서는 볼 수 없습니다.', rankNote:'오늘 2시간 이상 공부한 사람만 순위에 오릅니다(상위 20위). 공부 시간은 일시정지하거나 단계가 끝나거나 창을 닫을 때 기록됩니다. 하루는 UTC 0시(한국 오전 9시)에 초기화됩니다. 공개 정보: 닉네임, 국가, 오늘 공부 시간.',
+      howTitle:'진행 방식', setupTitle:'내 시간 설정', presets:'빠른 선택', cycle:'한 바퀴', durH:'{h}시간 {m}분', durM:'{m}분', applyNext:'타이머가 돌아가는 중에 바꾸면 다음 단계부터 적용됩니다.', s1:'<b>시작</b>을 누르면 {study}분 공부가 시작됩니다.', s2:'공부가 끝나면 알림음과 함께 {rest}분 휴식이 자동으로 시작됩니다.', s3:'휴식이 끝나면 다음 공부가 자동으로 시작되고, 일시정지할 때까지 계속 반복됩니다.', s4:'공부 {every}번째마다 휴식 대신 {long}분 긴 휴식이 들어갑니다.', s4off:'긴 휴식을 꺼 두어서 공부와 휴식만 번갈아 반복합니다.', s5:'작은 창을 띄우면 다른 창 위에 남은 시간이 계속 표시됩니다.',
+      settings:'설정', study:'공부', rest:'휴식', long:'긴 휴식', start:'시작', pause:'일시정지', resume:'계속',
+      today:'오늘 {n}회 완료', paused:'일시정지 · ', dots:'긴 휴식까지 {n}회', resetTitle:'처음부터 (공부부터 다시)', skipTitle:'다음 단계로 건너뛰기',
+      pipOpen:'작은 창으로 띄우기', pipClose:'작은 창 닫기', note:'작은 창은 다른 프로그램 위에 항상 떠 있습니다. 브라우저를 최소화해도 계속 보입니다.',
+      noteFail:'이 브라우저는 작은 창을 지원하지 않습니다. Chrome이나 Edge 최신 버전에서 열어 주세요.',
+      hint:'<kbd>Space</kbd> 시작/일시정지 · <kbd>R</kbd> 처음부터 · <kbd>N</kbd> 건너뛰기 · <kbd>P</kbd> 작은 창',
+      setLongOn:'긴 휴식 사용', setEvery:'긴 휴식 간격', setVol:'알림음 크기', min:'분', everyUnit:'회마다', testSound:'소리 확인', save:'저장',
+      toStudy:'휴식 끝. {m}분 공부 시작', toRest:'공부 끝. {m}분 {name} 시작', saved:'설정을 저장했습니다. 시간 변경은 다음 단계부터 적용됩니다.' },
+    ja:{ onBoard:'今日のランキングに入っています。', needMore:'ランクインまであと {d}（2時間以上）', tabTimer:'タイマー', tabRank:'世界ランキング', rankTitle:'今日の世界勉強ランキング', resetIn:'{day} UTC · あと {d} でリセット', refresh:'更新', yourRank:'あなたの順位', yourToday:'今日の集中時間', studyingToday:'ランクイン', peopleN:'{n} 人', nickname:'ニックネーム', saveName:'保存', nameSaved:'ニックネームを保存しました', individuals:'個人ランキング TOP 20', countries:'国別ランキング', meTag:'あなた', emptyRank:'今日はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', offline:'ランキングは公開サイトで動作します。ここでは表示できません。', rankNote:'今日2時間以上勉強した人だけがランクインします（上位20位）。勉強時間は一時停止・フェーズ終了・ページを閉じたときに記録されます。1日は UTC 0時（日本時間 午前9時）にリセットされます。公開情報：ニックネーム、国、今日の勉強時間。',
+      howTitle:'使い方', setupTitle:'時間設定', presets:'プリセット', cycle:'1サイクル', durH:'{h}時間{m}分', durM:'{m}分', applyNext:'タイマー作動中の変更は次のフェーズから反映されます。', s1:'<b>開始</b>を押すと {study} 分の集中が始まります。', s2:'終わると通知音が鳴り、{rest} 分の休憩が自動で始まります。', s3:'休憩が終わると次の集中が自動で始まり、一時停止するまで繰り返します。', s4:'{every} 回集中するごとに、休憩の代わりに {long} 分の長い休憩になります。', s4off:'長い休憩はオフなので、集中と休憩を交互に繰り返します。', s5:'ミニタイマーを表示すると、他のウィンドウの上に残り時間が表示され続けます。',
+      settings:'設定', study:'集中', rest:'休憩', long:'長い休憩', start:'開始', pause:'一時停止', resume:'再開',
+      today:'今日 {n} 回完了', paused:'一時停止中 · ', dots:'長い休憩まであと {n} 回', resetTitle:'最初から（集中から再開）', skipTitle:'次のフェーズへスキップ',
+      pipOpen:'ミニタイマーを表示', pipClose:'ミニタイマーを閉じる', note:'ミニタイマーは他のウィンドウの上に常に表示され、ブラウザを最小化しても見えます。',
+      noteFail:'このブラウザはミニタイマーに対応していません。最新の Chrome または Edge で開いてください。',
+      hint:'<kbd>Space</kbd> 開始/一時停止 · <kbd>R</kbd> 最初から · <kbd>N</kbd> スキップ · <kbd>P</kbd> ミニタイマー',
+      setLongOn:'長い休憩を使う', setEvery:'長い休憩の間隔', setVol:'通知音の音量', min:'分', everyUnit:'回ごと', testSound:'音を確認', save:'保存',
+      toStudy:'休憩終了。{m}分の集中を開始', toRest:'集中終了。{m}分の{name}を開始', saved:'設定を保存しました。時間の変更は次のフェーズから反映されます。' },
+    zh:{ onBoard:'你已登上今日排行榜。', needMore:'再学习 {d} 即可上榜（满 2 小时）', tabTimer:'计时器', tabRank:'世界排名', rankTitle:'今日全球学习排名', resetIn:'{day} UTC · {d} 后重置', refresh:'刷新', yourRank:'我的排名', yourToday:'我今日专注', studyingToday:'上榜人数', peopleN:'{n} 人', nickname:'昵称', saveName:'保存', nameSaved:'昵称已保存', individuals:'个人排名 TOP 20', countries:'国家排名', meTag:'我', emptyRank:'今天还没有人学习满 2 小时。来做第一个吧。', offline:'排名在正式网站上可用，这里无法显示。', rankNote:'只有今天学习满 2 小时的人才会上榜（前 20 名）。暂停、阶段结束或关闭页面时会记录学习时间。每天在 UTC 0 点（北京时间上午 8 点）重置。公开信息：昵称、国家、今日学习时长。',
+      howTitle:'使用方法', setupTitle:'时间设置', presets:'快速选择', cycle:'一个完整循环', durH:'{h}小时{m}分钟', durM:'{m}分钟', applyNext:'计时进行中修改，将从下一阶段生效。', s1:'按下<b>开始</b>，{study} 分钟专注开始。', s2:'结束时响起提示音，{rest} 分钟休息自动开始。', s3:'休息结束后，下一轮专注自动开始，直到暂停为止一直循环。', s4:'每完成 {every} 次专注，就用 {long} 分钟长休息代替普通休息。', s4off:'已关闭长休息，只在专注和休息之间交替。', s5:'弹出迷你计时器后，剩余时间会一直显示在其他窗口上方。',
+      settings:'设置', study:'专注', rest:'休息', long:'长休息', start:'开始', pause:'暂停', resume:'继续',
+      today:'今天完成 {n} 次', paused:'已暂停 · ', dots:'距长休息还有 {n} 次', resetTitle:'从头开始（重新专注）', skipTitle:'跳到下一阶段',
+      pipOpen:'弹出迷你计时器', pipClose:'关闭迷你计时器', note:'迷你计时器始终显示在其他窗口上方，浏览器最小化后也能看到。',
+      noteFail:'此浏览器不支持迷你计时器。请使用最新版 Chrome 或 Edge 打开。',
+      hint:'<kbd>Space</kbd> 开始/暂停 · <kbd>R</kbd> 从头开始 · <kbd>N</kbd> 跳过 · <kbd>P</kbd> 迷你计时器',
+      setLongOn:'启用长休息', setEvery:'长休息间隔', setVol:'提示音音量', min:'分钟', everyUnit:'次一轮', testSound:'试听', save:'保存',
+      toStudy:'休息结束。开始 {m} 分钟专注', toRest:'专注结束。开始 {m} 分钟{name}', saved:'设置已保存。时间更改将从下一阶段生效。' }
+  };
+  const guess = (navigator.language || 'en').slice(0, 2);
+  let lang = store.get('lang', L[guess] ? guess : 'en');
+  if (!L[lang]) lang = 'en';
+  const t = (k, v = {}) => (L[lang][k] || L.en[k]).replace(/\{(\w+)\}/g, (_, x) => v[x]);
+  const NAME = new Proxy({}, { get: (_, k) => t(k) });
+  let pipFailed = false;
+  function applyLang(){
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang;
+    $('lang').value = lang;
+    document.querySelectorAll('[data-i]').forEach(el => el.textContent = t(el.dataset.i));
+    document.querySelectorAll('[data-it]').forEach(el => { el.title = t(el.dataset.it); el.setAttribute('aria-label', t(el.dataset.it)); });
+    $('hint').innerHTML = t('hint');
+    $('note').textContent = t(pipFailed ? 'noteFail' : 'note');
+    $('toggle').textContent = running ? t('pause') : (remaining < total ? t('resume') : t('start'));
+    pipLabel(); renderStatic(); renderGuide(); render();
+    if (rankData) renderRanking(rankData); else if (document.body.dataset.view === 'rank') loadRanking();
+  }
+  const PIPCOL = { study:'#1e8e4e', rest:'#4fae72', long:'#0e7c72' };
+
+  let cfg = Object.assign({ study:25, rest:5, long:15, every:4, longOn:true, vol:0.6 }, store.get('cfg', {}));
+  let day = store.get('day', { key: dayKey(), count: 0 });
+  if (day.key !== dayKey()) day = { key: dayKey(), count: 0 };
+
+  let mode = 'study', streak = 0, running = false, endAt = 0, total = cfg.study * 60000, remaining = total;
+
+  // 다이얼 눈금
+  let s = '';
+  for (let i = 0; i < 60; i++) {
+    const a = i * 6 * Math.PI / 180, major = i % 5 === 0, r1 = major ? 136 : 139, r2 = 146;
+    s += `<line x1="${150+r1*Math.sin(a)}" y1="${150-r1*Math.cos(a)}" x2="${150+r2*Math.sin(a)}" y2="${150-r2*Math.cos(a)}" stroke="var(--${major?'muted':'line'})" stroke-width="${major?2:1.2}" stroke-linecap="round"/>`;
+  }
+  $('ticks').innerHTML = s;
+  const arc = $('arc'), C = 2 * Math.PI * 118;
+  arc.setAttribute('stroke-dasharray', C);
+
+  const fmt = ms => { const x = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(x/60)).padStart(2,'0') + ':' + String(x%60).padStart(2,'0'); };
+  const left = () => running ? endAt - Date.now() : remaining;
+  const nextRest = () => (cfg.longOn && (streak + 1) % cfg.every === 0) ? 'long' : 'rest';
+
+  // 최소화해도 정확하게: 틱은 Worker 에서 (메인 스레드 타이머는 백그라운드에서 크게 늦춰짐)
+  try {
+    const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'], { type: 'text/javascript' })));
+    w.onmessage = tick;
+  } catch { setInterval(tick, 250); }
+
+  function tick(){
+    if (running && endAt - Date.now() <= 0) { advance(true); return; }
+    render();
+  }
+
+  function render(){
+    const l = left(), tm = fmt(l);
+    $('time').textContent = tm;
+    arc.setAttribute('stroke-dashoffset', C * (1 - Math.max(0, l) / total));
+    $('sub').textContent = (!running && remaining < total ? t('paused') : '') + t('today', { n: day.count });
+    document.title = running ? `${tm} ${NAME[mode]}` : BASE_TITLE;
+    drawPip(tm);
+  }
+
+  function renderStatic(){
+    ['study','rest','long'].forEach(k => $('p-'+k).classList.toggle('on', k === mode));
+    $('p-long').hidden = !cfg.longOn;
+    const dots = $('dots');
+    dots.hidden = !cfg.longOn;
+    if (cfg.longOn) {
+      const pos = streak % cfg.every;
+      dots.innerHTML = Array.from({ length: cfg.every }, (_, i) => `<i class="${i < pos ? 'on' : ''}"></i>`).join('');
+      dots.title = t('dots', { n: cfg.every - pos });
+    }
+  }
+
+  function setMode(m){
+    mode = m; document.body.dataset.mode = m;
+    total = remaining = cfg[m] * 60000;
+    renderStatic();
+  }
+
+  function start(){
+    unlockAudio();
+    running = true; endAt = Date.now() + remaining;
+    $('toggle').textContent = t('pause');
+    segBegin(true);
+    keepAwake(); render();
+  }
+  function pause(){
+    segEnd();
+    remaining = Math.max(0, endAt - Date.now());
+    running = false;
+    $('toggle').textContent = t('resume');
+    render(); reportStudy();
+  }
+  function toggle(){ running ? pause() : start(); }
+
+  // 단계 종료 → 알림음 → 다음 단계 자동 시작 (처음 시작할 때는 소리 없음)
+  function advance(byTimer){
+    segEnd();
+    let next;
+    if (mode === 'study') {
+      next = nextRest();
+      if (byTimer) { day.count++; store.set('day', day); }
+      streak++;
+    } else {
+      if (mode === 'long') streak = 0;
+      next = 'study';
+    }
+    const wasRunning = running;
+    setMode(next);
+    if (byTimer) {
+      chime(next);
+      toast(next === 'study' ? t('toStudy', { m: cfg.study }) : t('toRest', { m: cfg[next], name: NAME[next] }));
+    }
+    if (byTimer || wasRunning) { running = true; endAt = Date.now() + remaining; $('toggle').textContent = t('pause'); }
+    else $('toggle').textContent = t('start');
+    segBegin(false);
+    render(); reportStudy();
+  }
+
+  // 알림음: 휴식 시작은 내려가는 두 음, 긴 휴식은 내려가는 세 음, 공부 시작은 올라가는 세 음
+  let ac = null;
+  function unlockAudio(){
+    try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch {}
+  }
+  function chime(kind){
+    if (!ac || cfg.vol <= 0) return;
+    const notes = kind === 'study' ? [659, 880, 1175] : kind === 'long' ? [1175, 880, 659] : [988, 659];
+    notes.forEach((f, i) => {
+      const o = ac.createOscillator(), g = ac.createGain(), t0 = ac.currentTime + i * 0.28;
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.001, cfg.vol * 0.5), t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.9);
+      o.connect(g).connect(ac.destination); o.start(t0); o.stop(t0 + 0.95);
+    });
+  }
+
+  let wake = null;
+  async function keepAwake(){
+    try { if (navigator.wakeLock && !wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => wake = null); } } catch {}
+  }
+
+  let toastTimer;
+  function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3500); }
+
+  // ── 작은 창 (Picture-in-Picture) ──
+  // 1순위: Document PiP (Chrome·Edge 116+, 버튼 포함)  2순위: 캔버스를 영상으로 띄우는 PiP
+  let pipWin = null, pipEls = null, videoPip = false;
+  const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 270;
+  const cx = canvas.getContext('2d');
+  const video = $('pipVideo');
+
+  function drawPip(tm){
+    const col = PIPCOL[mode], label = NAME[mode] + (running ? '' : ' · ' + t('pause')), p = Math.max(0, left()) / total;
+    if (pipEls) {
+      pipEls.time.textContent = tm;
+      pipEls.mode.textContent = label;
+      pipEls.body.style.setProperty('--c', col);
+      pipEls.btn.textContent = running ? t('pause') : (remaining < total ? t('resume') : t('start'));
+      pipEls.bar.style.width = (p * 100) + '%';
+    }
+    if (videoPip) {
+      cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, 480, 270);
+      cx.fillStyle = '#e1ebe4'; cx.fillRect(0, 260, 480, 10);
+      cx.fillStyle = col; cx.fillRect(0, 260, 480 * p, 10);
+      cx.textAlign = 'center';
+      cx.font = '600 30px "Noto Sans KR", sans-serif'; cx.fillText(label, 240, 70);
+      cx.fillStyle = '#16271d'; cx.font = '700 120px "JetBrains Mono", monospace'; cx.fillText(tm, 240, 195);
+    }
+  }
+
+  async function openPip(){
+    unlockAudio();
+    if (pipWin) { pipWin.close(); return; }
+    if (document.pictureInPictureElement) { document.exitPictureInPicture().catch(() => {}); return; }
+    if ('documentPictureInPicture' in window) {
+      try {
+        pipWin = await documentPictureInPicture.requestWindow({ width: 240, height: 150 });
+        const d = pipWin.document;
+        d.title = 'TM Timer';
+        d.head.innerHTML = `<style>
+          body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:#fff;color:#16271d;font-family:"Noto Sans KR",system-ui,sans-serif;--c:#1e8e4e;position:relative;overflow:hidden}
+          .m{color:var(--c);font-weight:700;font-size:clamp(12px,6vw,22px)}
+          .t{color:#16271d;font-weight:700;font-size:clamp(32px,min(24vw,38vh),140px);font-family:"JetBrains Mono",Consolas,monospace;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.1}
+          button{margin-top:4px;background:var(--c);color:#fff;border:0;border-radius:8px;padding:5px 14px;font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+          .track{position:absolute;left:0;right:0;bottom:0;height:5px;background:#e1ebe4}
+          .b{height:100%;background:var(--c)}</style>`;
+        d.body.innerHTML = '<div class="m"></div><div class="t"></div><button type="button"></button><div class="track"><div class="b"></div></div>';
+        pipEls = { body: d.body, mode: d.querySelector('.m'), time: d.querySelector('.t'), btn: d.querySelector('button'), bar: d.querySelector('.b') };
+        pipEls.btn.onclick = toggle;
+        pipWin.addEventListener('pagehide', () => { pipWin = null; pipEls = null; pipLabel(); });
+        pipFailed = false; $('note').textContent = t('note');
+        pipLabel(); render();
+        return;
+      } catch (e) { pipWin = null; pipEls = null; }
+    }
+    if (document.pictureInPictureEnabled && canvas.captureStream) {
+      try {
+        videoPip = true; render();
+        if (!video.srcObject) video.srcObject = canvas.captureStream();
+        await video.play();
+        await video.requestPictureInPicture();
+        pipFailed = false; $('note').textContent = t('note');
+        pipLabel();
+        return;
+      } catch (e) { videoPip = false; }
+    }
+    pipFailed = true; $('note').textContent = t('noteFail');
+  }
+  video.addEventListener('leavepictureinpicture', () => { videoPip = false; video.pause(); pipLabel(); });
+  try {
+    navigator.mediaSession.setActionHandler('play', () => { if (!running) start(); video.play(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (running) pause(); video.play(); });
+  } catch {}
+  function pipLabel(){ $('pipLabel').textContent = t((pipWin || videoPip) ? 'pipClose' : 'pipOpen'); }
+
+  // 이벤트
+  $('toggle').onclick = toggle;
+  $('reset').onclick = () => { segEnd(); running = false; streak = 0; setMode('study'); $('toggle').textContent = t('start'); render(); reportStudy(); };
+  $('skip').onclick = () => advance(false);
+  $('pipBtn').onclick = openPip;
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, select')) return;
+    if (e.code === 'Space') { e.preventDefault(); toggle(); }
+    else if (/^[rR]$/.test(e.key)) $('reset').click();
+    else if (/^[nN]$/.test(e.key)) $('skip').click();
+    else if (/^[pP]$/.test(e.key)) openPip();
+  });
+
+  // 진행 방식 설명 + 한 바퀴 타임라인
+  function renderGuide(){
+    const v = { study: cfg.study, rest: cfg.rest, long: cfg.long, every: cfg.every };
+    $('steps').innerHTML = ['s1', 's2', 's3', cfg.longOn ? 's4' : 's4off', 's5'].map(k => `<li><span>${t(k, v)}</span></li>`).join('');
+    const n = cfg.longOn ? cfg.every : 1;
+    let bar = '', mins = 0;
+    for (let i = 0; i < n; i++) {
+      bar += `<i class="s" style="flex:${cfg.study}"></i>`; mins += cfg.study;
+      const last = cfg.longOn && i === n - 1;
+      bar += `<i class="${last ? 'l' : 'r'}" style="flex:${last ? cfg.long : cfg.rest}"></i>`; mins += last ? cfg.long : cfg.rest;
+    }
+    $('cycBar').innerHTML = bar;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    $('cycTotal').innerHTML = `${t('cycle')} · <small>${h ? t('durH', { h, m }) : t('durM', { m })}</small>`;
+    $('lgLong').hidden = !cfg.longOn;
+  }
+
+  // 시간 설정 (바꾸는 즉시 저장·적용)
+  const LIM = { study:[1,180], rest:[1,60], long:[1,90], every:[2,10] };
+  function fillSetup(){
+    Object.keys(LIM).forEach(f => $('set-'+f).value = cfg[f]);
+    $('set-longOn').checked = cfg.longOn; $('set-vol').value = cfg.vol;
+    const on = cfg.longOn;
+    $('r-long').classList.toggle('off', !on); $('r-every').classList.toggle('off', !on);
+    document.querySelectorAll('#r-long input, #r-long button, #r-every input, #r-every button').forEach(el => el.disabled = !on);
+    document.querySelectorAll('#presets .chip').forEach(b => {
+      const [a, r, l] = b.dataset.p.split(',').map(Number);
+      b.setAttribute('aria-pressed', a === cfg.study && r === cfg.rest && l === cfg.long);
+    });
+  }
+  function applyCfg(){
+    store.set('cfg', cfg);
+    if (!running && remaining === total) setMode(mode === 'long' && !cfg.longOn ? 'rest' : mode);
+    fillSetup(); renderStatic(); renderGuide(); render();
+  }
+  const clamp = (f, v) => Math.min(LIM[f][1], Math.max(LIM[f][0], Math.round(v)));
+  Object.keys(LIM).forEach(f => $('set-'+f).addEventListener('change', e => {
+    const v = +e.target.value; if (v > 0) cfg[f] = clamp(f, v); applyCfg();
+  }));
+  document.querySelectorAll('[data-step]').forEach(b => b.onclick = () => {
+    const [f, d] = b.dataset.step.split(','); cfg[f] = clamp(f, cfg[f] + +d); applyCfg();
+  });
+  $('set-longOn').addEventListener('change', e => { cfg.longOn = e.target.checked; applyCfg(); });
+  $('set-vol').addEventListener('change', e => { cfg.vol = +e.target.value; store.set('cfg', cfg); });
+  document.querySelectorAll('#presets .chip').forEach(b => b.onclick = () => {
+    const [a, r, l] = b.dataset.p.split(',').map(Number); cfg.study = a; cfg.rest = r; cfg.long = l; applyCfg();
+  });
+  $('testSound').onclick = () => { unlockAudio(); cfg.vol = +$('set-vol').value; chime('study'); };
+
+  // ── 세계 순위 ──
+  const API = '/api/ranking';
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  let uid = store.get('uid', null);
+  if (!uid) { uid = uuid(); store.set('uid', uid); }
+  let nick = store.get('nick', 'Tomato-' + uid.slice(0, 4).toUpperCase());
+  let rankData = null, rankOffline = false;
+  const fmtDur = mins => { const h = Math.floor(mins / 60), m = mins % 60; return h ? t('durH', { h, m }) : t('durM', { m }); };
+  const fmtLeft = ms => { const m = Math.max(0, Math.round(ms / 60000)); return fmtDur(m); };
+  const regionName = cc => { if (!cc || cc === 'XX' || cc === 'T1') return '—'; try { return new Intl.DisplayNames([lang], { type: 'region' }).of(cc) || cc; } catch { return cc; } };
+
+  // 공부 구간: 공부 단계가 돌아가기 시작한 시각 ~ 멈춘 시각. 쌓인 시간은 분 단위로 서버에 보냄
+  let segStart = 0, carry = store.get('carry', 0);
+  const send = (body) => fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ id: uid, name: nick }, body)) });
+  function segBegin(ping){
+    if (!running || mode !== 'study') return;
+    segStart = Date.now();
+    if (ping) send({ start: true }).catch(() => {});
+  }
+  function segEnd(){
+    if (!segStart) return;
+    carry += Math.min(Date.now() - segStart, cfg.study * 60000 + 5000);
+    segStart = 0; store.set('carry', carry);
+  }
+  function reportStudy(beacon){
+    const min = Math.min(180, Math.floor(carry / 60000));
+    if (min < 1) return;
+    const done = () => { carry = Math.max(0, carry - min * 60000); store.set('carry', carry); };
+    if (beacon) {
+      const body = new Blob([JSON.stringify({ id: uid, name: nick, minutes: min })], { type: 'application/json' });
+      if (navigator.sendBeacon && navigator.sendBeacon(API, body)) done();
+      return;
+    }
+    send({ minutes: min }).then(r => {
+      if (r.ok || r.status === 429) { done(); if (document.body.dataset.view === 'rank') loadRanking(); }
+    }).catch(() => {});   // 오프라인이면 carry 에 남겨 두었다가 다음에 함께 보냄
+  }
+  // 창을 닫거나 다른 페이지로 갈 때도 그때까지 공부한 시간을 기록
+  window.addEventListener('pagehide', () => { segEnd(); reportStudy(true); });
+  window.addEventListener('pageshow', e => { if (e.persisted) segBegin(false); });
+
+  async function loadRanking(){
+    try {
+      const r = await fetch(API + '?id=' + encodeURIComponent(uid), { cache: 'no-store' });
+      if (!r.ok) throw new Error(r.status);
+      rankData = await r.json(); rankData.loadedAt = Date.now(); rankOffline = false;
+    } catch { rankOffline = true; }
+    renderRanking(rankData);
+  }
+
+  function li(cls, cells, me){
+    const el = document.createElement('li'); el.className = cls;
+    if (me) el.dataset.me = t('meTag');
+    cells.forEach(([c, txt]) => { const s = document.createElement('span'); s.className = c; s.textContent = txt; el.appendChild(s); });
+    return el;
+  }
+  function emptyRow(list, msg){ list.innerHTML = ''; const e = document.createElement('li'); e.className = 'empty'; e.textContent = msg; list.appendChild(e); }
+
+  function renderRanking(d){
+    const people = $('boardPeople'), ctry = $('boardCountries');
+    if (rankOffline || !d) {
+      $('rankSub').textContent = ''; $('meNeed').textContent = ''; ['meRank', 'meMin', 'totPeople'].forEach(k => $(k).textContent = '–');
+      emptyRow(people, t('offline')); emptyRow(ctry, t('offline')); return;
+    }
+    const left = d.resetsInMs - (Date.now() - d.loadedAt);
+    $('rankSub').textContent = t('resetIn', { day: d.day, d: fmtLeft(left) });
+    $('meRank').textContent = d.me && d.me.rank ? '#' + d.me.rank : '–';
+    $('meMin').textContent = fmtDur(d.me ? d.me.minutes : 0);
+    $('totPeople').textContent = t('peopleN', { n: d.total.people });
+    const q = d.qualify || 120, mm = d.me ? d.me.minutes : 0;
+    $('meNeed').textContent = mm >= q ? t('onBoard') : t('needMore', { d: fmtDur(q - mm) });
+    if (!d.top.length) emptyRow(people, t('emptyRank'));
+    else {
+      people.innerHTML = '';
+      d.top.forEach((r, i) => people.appendChild(li((i < 3 ? 'r' + (i + 1) : '') + (r.mine ? ' mine' : ''),
+        [['pos', i + 1], ['nm', r.name], ['cc', regionName(r.country)], ['mm', fmtDur(r.minutes)]], r.mine)));
+      people.querySelectorAll('li.mine .nm').forEach(n => n.dataset.me = t('meTag'));
+    }
+    if (!d.countries.length) emptyRow(ctry, t('emptyRank'));
+    else {
+      ctry.innerHTML = '';
+      d.countries.forEach((c, i) => ctry.appendChild(li(i < 3 ? 'r' + (i + 1) : '',
+        [['pos', i + 1], ['nm', regionName(c.country)], ['cc', t('peopleN', { n: c.people })], ['mm', fmtDur(c.minutes)]])));
+    }
+  }
+
+  function setView(v){
+    document.body.dataset.view = v;
+    $('tab-timer').setAttribute('aria-selected', v === 'timer');
+    $('tab-rank').setAttribute('aria-selected', v === 'rank');
+    if (v === 'rank') loadRanking();
+  }
+  $('tab-timer').onclick = () => setView('timer');
+  $('tab-rank').onclick = () => setView('rank');
+  $('rankRefresh').onclick = loadRanking;
+  setInterval(() => { if (document.body.dataset.view === 'rank' && !document.hidden) loadRanking(); }, 60000);
+  $('nick').value = nick;
+  $('nameForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const n = $('nick').value.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+    if (!n) return;
+    nick = n; $('nick').value = n; store.set('nick', n);
+    try { await fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: uid, name: nick, minutes: 0 }) }); } catch {}
+    toast(t('nameSaved')); loadRanking();
+  });
+  reportStudy();
+  setView(location.hash === '#ranking' ? 'rank' : 'timer');
+
+  $('lang').addEventListener('change', e => { lang = e.target.value; store.set('lang', lang); applyLang(); });
+
+  setMode('study');
+  fillSetup();
+  applyLang();
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+name = "tm-timer"
+pages_build_output_dir = "public"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tm-timer"
+database_id = "71d77747-91b5-44f9-9677-ddda48914c05"
