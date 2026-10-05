@@ -658,6 +658,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     renderRanking(rankData);
   }
 
+  const peopleCount = n => n === 1 && lang === 'en' ? '1 person' : t('peopleN', { n });
   function li(cls, cells, me){
     const el = document.createElement('li'); el.className = cls;
     if (me) el.dataset.me = t('meTag');
@@ -676,7 +677,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     $('rankSub').textContent = t('resetIn', { day: d.day, d: fmtLeft(left) });
     $('meRank').textContent = d.me && d.me.rank ? '#' + d.me.rank : '–';
     $('meMin').textContent = fmtDur(d.me ? d.me.minutes : 0);
-    $('totPeople').textContent = t('peopleN', { n: d.total.people });
+    $('totPeople').textContent = peopleCount(d.total.people);
     const q = d.qualify || 120, mm = d.me ? d.me.minutes : 0;
     $('meNeed').textContent = mm >= q ? t('onBoard') : t('needMore', { d: fmtDur(q - mm) });
     if (!d.top.length) emptyRow(people, t('emptyRank'));
@@ -690,7 +691,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     else {
       ctry.innerHTML = '';
       d.countries.forEach((c, i) => ctry.appendChild(li(i < 3 ? 'r' + (i + 1) : '',
-        [['pos', i + 1], ['nm', regionName(c.country)], ['cc', t('peopleN', { n: c.people })], ['mm', fmtDur(c.minutes)]])));
+        [['pos', i + 1], ['nm', regionName(c.country)], ['cc', peopleCount(c.people)], ['mm', fmtDur(c.minutes)]])));
     }
   }
 
