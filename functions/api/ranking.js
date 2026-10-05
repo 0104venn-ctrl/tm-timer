@@ -1,14 +1,14 @@
-// TM Timer 세계 순위 API (Cloudflare Pages Functions + D1)
-//   GET  /api/ranking?id=<uuid>                오늘(UTC) 2시간 이상 공부한 사람 중 상위 20 + 국가 순위 + 내 기록
-//   POST /api/ranking {id, name, start: true}   타이머 시작 (시작 시각을 서버 시계로 기록)
-//   POST /api/ranking {id, name, minutes}       일시정지·단계 종료·창 닫기 때 그동안 공부한 분 기록 (0 = 닉네임만 변경)
+// TM Timer world ranking API (Cloudflare Pages Functions + D1)
+//   GET  /api/ranking?id=<uuid>                top 20 people with 2+ hours today (UTC), country ranking, and my standing
+//   POST /api/ranking {id, name, start: true}   timer started (start time recorded on the server clock)
+//   POST /api/ranking {id, name, minutes}       focus minutes since then, sent on pause / phase end / page close (0 = rename only)
 //
-// 부정 방지: 한 사용자가 인정받는 시간은 '직전 기록 이후 실제로 흐른 시간'을 넘을 수 없고,
-// 한 번에 최대 180분, 하루 최대 960분(16시간)까지만 쌓인다.
+// Anti-cheat: a user is never credited more than the time that actually elapsed since their last record,
+// at most 180 minutes per report and 960 minutes (16 h) per day.
 
 const MAX_SESSION = 180;
 const MAX_DAY = 960;
-const QUALIFY = 120;   // 순위에 오르는 최소 공부 시간(분)
+const QUALIFY = 120;   // minimum focus minutes to appear in the ranking
 const TOP = 20;
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -81,21 +81,21 @@ export async function onRequestPost({ request, env }) {
   const country = (request.cf && request.cf.country) || 'XX';
   const user = await db.prepare('SELECT last_at FROM users WHERE id = ?').bind(id).first();
 
-  if (isStart) {   // 타이머 시작: 이 시각부터 흐른 시간만큼만 다음 기록이 인정됨
+  if (isStart) {   // timer start: the next report is capped by the time elapsed from now
     await db.prepare(
       `INSERT INTO users (id, name, country, last_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, country = excluded.country, last_at = excluded.last_at`).bind(id, name, country, now).run();
     return json({ ok: true, started: now });
   }
 
-  if (minutes === 0) {   // 닉네임만 변경
+  if (minutes === 0) {   // rename only
     await db.prepare(
       `INSERT INTO users (id, name, country, last_at) VALUES (?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET name = excluded.name, country = excluded.country`).bind(id, name, country, now).run();
     return json({ ok: true, credited: 0, me: await myStanding(db, day, id) });
   }
 
-  // 직전 기록 이후 실제로 흐른 시간(+1분 여유)을 넘는 만큼은 인정하지 않음
+  // never credit more than the real time since the last record (+1 min slack)
   const elapsed = user ? Math.floor((now - user.last_at) / 60000) + 1 : MAX_SESSION;
   const today = await db.prepare('SELECT minutes FROM daily WHERE day = ? AND id = ?').bind(day, id).first();
   const room = MAX_DAY - (today ? today.minutes : 0);

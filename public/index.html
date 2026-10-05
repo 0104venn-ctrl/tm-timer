@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,800&family=JetBrains+Mono:wght@700&family=Noto+Sans+KR:wght@400;600;800&display=swap">
 <style>
 body{margin:0}
-/* 레이아웃: 3열 — 왼쪽 진행 방식 / 가운데 다이얼 / 오른쪽 시간 설정. 좁으면 다이얼 먼저 한 열로 */
+/* Layout: three columns — how it works / dial / your times. Narrow screens stack with the dial first */
 :root{
   --bg:#ffffff; --surface:#f3f8f4; --fg:#16271d; --muted:#6a7c71; --line:#e1ebe4;
   --study:#1e8e4e; --rest:#6cc08a; --long:#0e7c72;
@@ -357,7 +357,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
 
   let mode = 'study', streak = 0, running = false, endAt = 0, total = cfg.study * 60000, remaining = total;
 
-  // 다이얼 눈금
+  // Dial tick marks
   let s = '';
   for (let i = 0; i < 60; i++) {
     const a = i * 6 * Math.PI / 180, major = i % 5 === 0, r1 = major ? 136 : 139, r2 = 146;
@@ -371,7 +371,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   const left = () => running ? endAt - Date.now() : remaining;
   const nextRest = () => (cfg.longOn && (streak + 1) % cfg.every === 0) ? 'long' : 'rest';
 
-  // 최소화해도 정확하게: 틱은 Worker 에서 (메인 스레드 타이머는 백그라운드에서 크게 늦춰짐)
+  // Ticks come from a Worker so the countdown stays accurate in background tabs (main-thread timers get throttled)
   try {
     const w = new Worker(URL.createObjectURL(new Blob(['setInterval(()=>postMessage(0),250)'], { type: 'text/javascript' })));
     w.onmessage = tick;
@@ -425,7 +425,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   }
   function toggle(){ running ? pause() : start(); }
 
-  // 단계 종료 → 알림음 → 다음 단계 자동 시작 (처음 시작할 때는 소리 없음)
+  // Phase ends → chime → next phase starts automatically (no sound on the very first start)
   function advance(byTimer){
     segEnd();
     let next;
@@ -449,7 +449,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     render(); reportStudy();
   }
 
-  // 알림음: 휴식 시작은 내려가는 두 음, 긴 휴식은 내려가는 세 음, 공부 시작은 올라가는 세 음
+  // Chimes: two falling notes for a break, three falling for a long break, three rising for focus
   let ac = null;
   function unlockAudio(){
     try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch {}
@@ -475,8 +475,8 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   let toastTimer;
   function toast(msg){ const el = $('toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 3500); }
 
-  // ── 작은 창 (Picture-in-Picture) ──
-  // 1순위: Document PiP (Chrome·Edge 116+, 버튼 포함)  2순위: 캔버스를 영상으로 띄우는 PiP
+  // ── Mini timer (Picture-in-Picture) ──
+  // First choice: Document PiP (Chrome/Edge 116+, with a button). Fallback: a canvas streamed into video PiP
   let pipWin = null, pipEls = null, videoPip = false;
   const canvas = document.createElement('canvas'); canvas.width = 480; canvas.height = 270;
   const cx = canvas.getContext('2d');
@@ -546,7 +546,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   } catch {}
   function pipLabel(){ $('pipLabel').textContent = t((pipWin || videoPip) ? 'pipClose' : 'pipOpen'); }
 
-  // 이벤트
+  // Events
   $('toggle').onclick = toggle;
   $('reset').onclick = () => { segEnd(); running = false; streak = 0; setMode('study'); $('toggle').textContent = t('start'); render(); reportStudy(); };
   $('skip').onclick = () => advance(false);
@@ -559,7 +559,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     else if (/^[pP]$/.test(e.key)) openPip();
   });
 
-  // 진행 방식 설명 + 한 바퀴 타임라인
+  // "How it works" steps + one-cycle timeline
   function renderGuide(){
     const v = { study: cfg.study, rest: cfg.rest, long: cfg.long, every: cfg.every };
     $('steps').innerHTML = ['s1', 's2', 's3', cfg.longOn ? 's4' : 's4off', 's5'].map(k => `<li><span>${t(k, v)}</span></li>`).join('');
@@ -576,7 +576,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     $('lgLong').hidden = !cfg.longOn;
   }
 
-  // 시간 설정 (바꾸는 즉시 저장·적용)
+  // Time settings (saved and applied on change)
   const LIM = { study:[1,180], rest:[1,60], long:[1,90], every:[2,10] };
   function fillSetup(){
     Object.keys(LIM).forEach(f => $('set-'+f).value = cfg[f]);
@@ -608,7 +608,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   });
   $('testSound').onclick = () => { unlockAudio(); cfg.vol = +$('set-vol').value; chime('study'); };
 
-  // ── 세계 순위 ──
+  // ── World ranking ──
   const API = '/api/ranking';
   const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
   let uid = store.get('uid', null);
@@ -619,7 +619,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   const fmtLeft = ms => { const m = Math.max(0, Math.round(ms / 60000)); return fmtDur(m); };
   const regionName = cc => { if (!cc || cc === 'XX' || cc === 'T1') return '—'; try { return new Intl.DisplayNames([lang], { type: 'region' }).of(cc) || cc; } catch { return cc; } };
 
-  // 공부 구간: 공부 단계가 돌아가기 시작한 시각 ~ 멈춘 시각. 쌓인 시간은 분 단위로 서버에 보냄
+  // A focus segment runs from when the focus phase starts ticking until it stops. Whole minutes are reported to the server
   let segStart = 0, carry = store.get('carry', 0);
   const send = (body) => fetch(API, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ id: uid, name: nick }, body)) });
   function segBegin(ping){
@@ -643,9 +643,9 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     }
     send({ minutes: min }).then(r => {
       if (r.ok || r.status === 429) { done(); if (document.body.dataset.view === 'rank') loadRanking(); }
-    }).catch(() => {});   // 오프라인이면 carry 에 남겨 두었다가 다음에 함께 보냄
+    }).catch(() => {});   // offline: keep it in carry and send it with the next report
   }
-  // 창을 닫거나 다른 페이지로 갈 때도 그때까지 공부한 시간을 기록
+  // Also report focus time when the page is closed or left
   window.addEventListener('pagehide', () => { segEnd(); reportStudy(true); });
   window.addEventListener('pageshow', e => { if (e.persisted) segBegin(false); });
 
