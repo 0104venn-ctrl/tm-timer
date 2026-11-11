@@ -30,7 +30,7 @@ const uid = (n) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`;
 
 // empty database
 let s = await stats();
-assert.deepEqual([s.visits, s.visitors, s.countries, s.today, s.studyMinutes], [0, 0, 0, 0, 0]);
+assert.deepEqual([s.period, s.visits, s.visitors, s.countries, s.studyMinutes], ['all', 0, 0, 0, 0]);
 
 // 1) one visit per browser per day, however many times the page loads
 assert.equal(await visit(uid(1), 'KR'), 200);
@@ -38,12 +38,12 @@ assert.equal(await visit(uid(1), 'KR'), 200);
 assert.equal(await visit(uid(2), 'KR'), 200);
 assert.equal(await visit(uid(3), 'US'), 200);
 s = await stats();
-assert.equal(s.visits, 3); assert.equal(s.today, 3); assert.equal(s.countries, 2);
+assert.equal(s.visits, 3); assert.equal(s.countries, 2);
 // 2) the next UTC day counts again
 clock += 24 * 3600e3;
 await visit(uid(1), 'KR');
 s = await stats();
-assert.equal(s.visits, 4); assert.equal(s.visitors, 3); assert.equal(s.today, 1);
+assert.equal(s.visits, 4); assert.equal(s.visitors, 3);
 assert.deepEqual(s.byCountry, [{ country: 'KR', visits: 3, minutes: 0 }, { country: 'US', visits: 1, minutes: 0 }]);
 // 3) unknown / Tor countries are counted as visits but not listed as countries
 await visit(uid(4), 'XX'); await visit(uid(5), 'T1');
@@ -68,4 +68,27 @@ assert.equal(await bad('not json'), 400);
 for (let i = 0; i < 12; i++) await visit(uid(100 + i), 'C' + String.fromCharCode(65 + i));
 s = await stats();
 assert.equal(s.byCountry.length, 10); assert.equal(s.countries, 14);
+// 7) periods: clock is 2026-11-11 (Wednesday) 03:00 UTC; the week starts Monday 11-09
+const P = async (period) => (await api.onRequestGet({ env, request: new Request('https://x/api/stats?period=' + period) })).json();
+raw.exec('DELETE FROM visits; DELETE FROM daily; DELETE FROM users;');
+const A = uid(1), B = uid(2);
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(A, 'a', 'KR', clock);
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(B, 'b', 'US', clock);
+for (const [day, id, c] of [['2026-11-11', A, 'KR'], ['2026-11-10', A, 'KR'], ['2026-11-05', B, 'US'], ['2026-10-20', B, 'US']])
+  raw.prepare('INSERT INTO visits VALUES (?,?,?)').run(day, id, c);
+for (const [day, id, m] of [['2026-11-11', A, 30], ['2026-11-10', A, 60], ['2026-11-05', B, 200], ['2026-10-20', B, 500]])
+  raw.prepare('INSERT INTO daily VALUES (?,?,?,?,?)').run(day, id, m, 1, clock);
+s = await P('day');
+assert.deepEqual([s.from, s.to, s.visits, s.studyMinutes], ['2026-11-11', '2026-11-11', 1, 30]);
+assert.deepEqual(s.byCountry.map(c => [c.country, c.visits, c.minutes]), [['KR', 1, 30]]);
+s = await P('week');
+assert.deepEqual([s.from, s.visits, s.studyMinutes], ['2026-11-09', 2, 90]);
+assert.deepEqual(s.byCountry.map(c => [c.country, c.visits, c.minutes]), [['KR', 2, 90]]);
+s = await P('month');
+assert.deepEqual([s.from, s.visits, s.countries, s.studyMinutes], ['2026-11-01', 3, 2, 290]);
+assert.deepEqual(s.byCountry.map(c => [c.country, c.visits, c.minutes]), [['US', 1, 200], ['KR', 2, 90]]);
+s = await P('all');
+assert.deepEqual([s.from, s.visits, s.studyMinutes], [null, 4, 790]);
+assert.deepEqual(s.byCountry.map(c => [c.country, c.visits, c.minutes]), [['US', 2, 700], ['KR', 2, 90]]);
+assert.equal((await P('bogus')).period, 'all');
 console.log('ALL STATS TESTS PASSED');

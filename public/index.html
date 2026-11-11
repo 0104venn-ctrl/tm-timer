@@ -164,6 +164,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
 .periods button{border:0;background:none;color:var(--muted);font:600 14px var(--body);padding:7px 16px;border-radius:999px;cursor:pointer}
 .periods button:hover{color:var(--study)}
 .periods button[aria-selected="true"]{background:var(--study);color:#fff}
+.ws-periods{margin-top:10px}
 .worldstats{grid-column:1/-1;border:1px solid var(--line);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0}
 body[data-view="rank"] .worldstats{display:none}
 @media (max-width:1020px){.worldstats{order:4}}
@@ -297,6 +298,12 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
       <div>
         <h2 id="wsTitle" data-i="wsTitle"></h2>
         <p class="ws-sub"><span class="live-dot" aria-hidden="true"></span><span data-i="liveLabel"></span><span id="wsUpdated"></span></p>
+        <div class="periods ws-periods" role="tablist" aria-label="Period">
+          <button type="button" role="tab" data-wsp="day" data-i="perDay"></button>
+          <button type="button" role="tab" data-wsp="week" data-i="perWeek"></button>
+          <button type="button" role="tab" data-wsp="month" data-i="perMonth"></button>
+          <button type="button" role="tab" data-wsp="all" data-i="perAll"></button>
+        </div>
       </div>
       <div class="tiles">
         <div class="tile"><b id="stVisits">–</b><span data-i="statVisits"></span></div>
@@ -354,7 +361,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
   };
   const dayKey = () => new Date().toDateString();
   const L = {
-    en:{ durD:'{d}d {h}h', perDay:'Today', perWeek:'This week', perMonth:'This month', rankTitleW:"This week's world ranking", rankTitleM:"This month's world ranking", yourWeek:'Your focus this week', yourMonth:'Your focus this month', emptyRankW:'No one has studied 2 hours yet this week. Be the first.', emptyRankM:'No one has studied 2 hours yet this month. Be the first.', onBoardW:"You're on this week's board.", onBoardM:"You're on this month's board.", wsTitle:'Countries studying together', liveLabel:'Live', updatedAt:' · updated {t}', colCountry:'Country', colVisits:'Visits', colStudied:'Studied', emptyStats:'No visits yet.', statsTitle:'All-time', statVisits:'Visits', statCountries:'Countries', statStudied:'Studied together', visitsByCountry:'Visits by country', visitsN:'{n} visits', stripLine:'{v} visits from {c} countries · {h} studied together', statsNote:'Ranked by total focus time and refreshed every 15 seconds. Visits are counted once per browser per UTC day; only the country is stored.', onBoard:"You're on today's board.", needMore:'{d} more to get on the board (2 hours)', tabTimer:'Timer', tabRank:'World Ranking', rankTitle:"Today's world ranking", resetIn:'{day} UTC · resets in {d}', refresh:'Refresh', yourRank:'Your rank', yourToday:'Your focus today', studyingToday:'On the board', peopleN:'{n} people', nickname:'Nickname', saveName:'Save', nameSaved:'Nickname saved', individuals:'Top 20', countries:'Countries', meTag:'You', emptyRank:'No one has studied 2 hours yet today. Be the first.', offline:'The ranking works on the published site. It is not available here.', rankNote:'Only people with 2+ hours of focus in the selected period are ranked (top 20). Weeks start on Monday and every period rolls over at 00:00 UTC. Focus time is saved when you pause, finish a phase or close the page. Shown publicly: nickname, country and focus time.',
+    en:{ perAll:'All time', durD:'{d}d {h}h', perDay:'Today', perWeek:'This week', perMonth:'This month', rankTitleW:"This week's world ranking", rankTitleM:"This month's world ranking", yourWeek:'Your focus this week', yourMonth:'Your focus this month', emptyRankW:'No one has studied 2 hours yet this week. Be the first.', emptyRankM:'No one has studied 2 hours yet this month. Be the first.', onBoardW:"You're on this week's board.", onBoardM:"You're on this month's board.", wsTitle:'Countries studying together', liveLabel:'Live', updatedAt:' · updated {t}', colCountry:'Country', colVisits:'Visits', colStudied:'Studied', emptyStats:'No visits yet.', statsTitle:'All-time', statVisits:'Visits', statCountries:'Countries', statStudied:'Studied together', visitsByCountry:'Visits by country', visitsN:'{n} visits', stripLine:'{v} visits from {c} countries · {h} studied together', statsNote:'Ranked by total focus time and refreshed every 15 seconds. Visits are counted once per browser per UTC day; only the country is stored.', onBoard:"You're on today's board.", needMore:'{d} more to get on the board (2 hours)', tabTimer:'Timer', tabRank:'World Ranking', rankTitle:"Today's world ranking", resetIn:'{day} UTC · resets in {d}', refresh:'Refresh', yourRank:'Your rank', yourToday:'Your focus today', studyingToday:'On the board', peopleN:'{n} people', nickname:'Nickname', saveName:'Save', nameSaved:'Nickname saved', individuals:'Top 20', countries:'Countries', meTag:'You', emptyRank:'No one has studied 2 hours yet today. Be the first.', offline:'The ranking works on the published site. It is not available here.', rankNote:'Only people with 2+ hours of focus in the selected period are ranked (top 20). Weeks start on Monday and every period rolls over at 00:00 UTC. Focus time is saved when you pause, finish a phase or close the page. Shown publicly: nickname, country and focus time.',
       howTitle:'How it works', setupTitle:'Your times', presets:'Quick picks', cycle:'One full cycle', durH:'{h}h {m}m', durM:'{m} min', applyNext:'Changes made while the timer runs apply from the next phase.', s1:'Press <b>Start</b>. A {study}-min focus session begins.', s2:'When it ends, a chime plays and a {rest}-min break starts on its own.', s3:'After the break, the next focus session starts automatically. It keeps looping until you pause.', s4:'After every {every}th focus session you get a {long}-min long break instead.', s4off:'Long breaks are off, so it simply alternates focus and break.', s5:'Pop out the mini timer to keep the countdown on top of other windows.',
       settings:'Settings', study:'Focus', rest:'Break', long:'Long break', start:'Start', pause:'Pause', resume:'Resume',
       today:'{n} done today', paused:'Paused · ', dots:'{n} more until long break', resetTitle:'Restart from focus', skipTitle:'Skip to next phase',
@@ -363,7 +370,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
       hint:'<kbd>Space</kbd> start/pause · <kbd>R</kbd> restart · <kbd>N</kbd> skip · <kbd>P</kbd> mini timer',
       setLongOn:'Use long breaks', setEvery:'Long break every', setVol:'Alert volume', min:'min', everyUnit:'sessions', testSound:'Test sound', save:'Save',
       toStudy:'Break over. {m}-min focus starts', toRest:'Focus done. {m}-min {name} starts', saved:'Settings saved. Time changes apply from the next phase.' },
-    ko:{ durD:'{d}일 {h}시간', perDay:'오늘', perWeek:'이번 주', perMonth:'이번 달', rankTitleW:'이번 주 세계 공부 순위', rankTitleM:'이번 달 세계 공부 순위', yourWeek:'이번 주 내 공부', yourMonth:'이번 달 내 공부', emptyRankW:'이번 주 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', emptyRankM:'이번 달 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', onBoardW:'이번 주 순위에 올랐습니다.', onBoardM:'이번 달 순위에 올랐습니다.', wsTitle:'나라별 공부 현황', liveLabel:'실시간', updatedAt:' · {t} 갱신', colCountry:'국가', colVisits:'방문', colStudied:'공부 시간', emptyStats:'아직 방문 기록이 없습니다.', statsTitle:'누적 통계', statVisits:'방문', statCountries:'국가', statStudied:'함께 공부한 시간', visitsByCountry:'나라별 방문', visitsN:'{n}회', stripLine:'{c}개국에서 {v}번 방문 · 함께 {h} 공부했어요', statsNote:'총 공부 시간 순으로 15초마다 갱신됩니다. 방문은 브라우저당 하루(UTC) 1회로 세고, 국가만 저장합니다.', onBoard:'오늘 순위에 올랐습니다.', needMore:'순위 진입까지 {d} 남았습니다 (2시간 기준)', tabTimer:'타이머', tabRank:'세계 순위', rankTitle:'오늘의 세계 공부 순위', resetIn:'{day} UTC 기준 · {d} 후 초기화', refresh:'새로고침', yourRank:'내 순위', yourToday:'오늘 내 공부', studyingToday:'순위 진입', peopleN:'{n}명', nickname:'닉네임', saveName:'저장', nameSaved:'닉네임을 저장했습니다', individuals:'개인 순위 TOP 20', countries:'국가 순위', meTag:'나', emptyRank:'오늘 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', offline:'순위는 배포된 사이트에서 작동합니다. 여기서는 볼 수 없습니다.', rankNote:'선택한 기간에 2시간 이상 공부한 사람만 순위에 오릅니다(상위 20위). 주는 월요일에 시작하고, 모든 기간은 UTC 0시(한국 오전 9시)에 바뀝니다. 공부 시간은 일시정지하거나 단계가 끝나거나 창을 닫을 때 기록됩니다. 공개 정보: 닉네임, 국가, 공부 시간.',
+    ko:{ perAll:'전체', durD:'{d}일 {h}시간', perDay:'오늘', perWeek:'이번 주', perMonth:'이번 달', rankTitleW:'이번 주 세계 공부 순위', rankTitleM:'이번 달 세계 공부 순위', yourWeek:'이번 주 내 공부', yourMonth:'이번 달 내 공부', emptyRankW:'이번 주 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', emptyRankM:'이번 달 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', onBoardW:'이번 주 순위에 올랐습니다.', onBoardM:'이번 달 순위에 올랐습니다.', wsTitle:'나라별 공부 현황', liveLabel:'실시간', updatedAt:' · {t} 갱신', colCountry:'국가', colVisits:'방문', colStudied:'공부 시간', emptyStats:'아직 방문 기록이 없습니다.', statsTitle:'누적 통계', statVisits:'방문', statCountries:'국가', statStudied:'함께 공부한 시간', visitsByCountry:'나라별 방문', visitsN:'{n}회', stripLine:'{c}개국에서 {v}번 방문 · 함께 {h} 공부했어요', statsNote:'총 공부 시간 순으로 15초마다 갱신됩니다. 방문은 브라우저당 하루(UTC) 1회로 세고, 국가만 저장합니다.', onBoard:'오늘 순위에 올랐습니다.', needMore:'순위 진입까지 {d} 남았습니다 (2시간 기준)', tabTimer:'타이머', tabRank:'세계 순위', rankTitle:'오늘의 세계 공부 순위', resetIn:'{day} UTC 기준 · {d} 후 초기화', refresh:'새로고침', yourRank:'내 순위', yourToday:'오늘 내 공부', studyingToday:'순위 진입', peopleN:'{n}명', nickname:'닉네임', saveName:'저장', nameSaved:'닉네임을 저장했습니다', individuals:'개인 순위 TOP 20', countries:'국가 순위', meTag:'나', emptyRank:'오늘 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', offline:'순위는 배포된 사이트에서 작동합니다. 여기서는 볼 수 없습니다.', rankNote:'선택한 기간에 2시간 이상 공부한 사람만 순위에 오릅니다(상위 20위). 주는 월요일에 시작하고, 모든 기간은 UTC 0시(한국 오전 9시)에 바뀝니다. 공부 시간은 일시정지하거나 단계가 끝나거나 창을 닫을 때 기록됩니다. 공개 정보: 닉네임, 국가, 공부 시간.',
       howTitle:'진행 방식', setupTitle:'내 시간 설정', presets:'빠른 선택', cycle:'한 바퀴', durH:'{h}시간 {m}분', durM:'{m}분', applyNext:'타이머가 돌아가는 중에 바꾸면 다음 단계부터 적용됩니다.', s1:'<b>시작</b>을 누르면 {study}분 공부가 시작됩니다.', s2:'공부가 끝나면 알림음과 함께 {rest}분 휴식이 자동으로 시작됩니다.', s3:'휴식이 끝나면 다음 공부가 자동으로 시작되고, 일시정지할 때까지 계속 반복됩니다.', s4:'공부 {every}번째마다 휴식 대신 {long}분 긴 휴식이 들어갑니다.', s4off:'긴 휴식을 꺼 두어서 공부와 휴식만 번갈아 반복합니다.', s5:'작은 창을 띄우면 다른 창 위에 남은 시간이 계속 표시됩니다.',
       settings:'설정', study:'공부', rest:'휴식', long:'긴 휴식', start:'시작', pause:'일시정지', resume:'계속',
       today:'오늘 {n}회 완료', paused:'일시정지 · ', dots:'긴 휴식까지 {n}회', resetTitle:'처음부터 (공부부터 다시)', skipTitle:'다음 단계로 건너뛰기',
@@ -372,7 +379,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
       hint:'<kbd>Space</kbd> 시작/일시정지 · <kbd>R</kbd> 처음부터 · <kbd>N</kbd> 건너뛰기 · <kbd>P</kbd> 작은 창',
       setLongOn:'긴 휴식 사용', setEvery:'긴 휴식 간격', setVol:'알림음 크기', min:'분', everyUnit:'회마다', testSound:'소리 확인', save:'저장',
       toStudy:'휴식 끝. {m}분 공부 시작', toRest:'공부 끝. {m}분 {name} 시작', saved:'설정을 저장했습니다. 시간 변경은 다음 단계부터 적용됩니다.' },
-    ja:{ durD:'{d}日{h}時間', perDay:'今日', perWeek:'今週', perMonth:'今月', rankTitleW:'今週の世界勉強ランキング', rankTitleM:'今月の世界勉強ランキング', yourWeek:'今週の集中時間', yourMonth:'今月の集中時間', emptyRankW:'今週はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', emptyRankM:'今月はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', onBoardW:'今週のランキングに入っています。', onBoardM:'今月のランキングに入っています。', wsTitle:'国別の勉強状況', liveLabel:'ライブ', updatedAt:' · {t} 更新', colCountry:'国', colVisits:'訪問', colStudied:'勉強時間', emptyStats:'まだ訪問記録がありません。', statsTitle:'累計', statVisits:'訪問', statCountries:'国', statStudied:'みんなの勉強時間', visitsByCountry:'国別の訪問', visitsN:'{n}回', stripLine:'{c}か国から{v}回の訪問 · みんなで{h}勉強しました', statsNote:'総勉強時間の順に15秒ごとに更新されます。訪問はブラウザごとに1日（UTC）1回として数え、国のみを保存します。', onBoard:'今日のランキングに入っています。', needMore:'ランクインまであと {d}（2時間以上）', tabTimer:'タイマー', tabRank:'世界ランキング', rankTitle:'今日の世界勉強ランキング', resetIn:'{day} UTC · あと {d} でリセット', refresh:'更新', yourRank:'あなたの順位', yourToday:'今日の集中時間', studyingToday:'ランクイン', peopleN:'{n} 人', nickname:'ニックネーム', saveName:'保存', nameSaved:'ニックネームを保存しました', individuals:'個人ランキング TOP 20', countries:'国別ランキング', meTag:'あなた', emptyRank:'今日はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', offline:'ランキングは公開サイトで動作します。ここでは表示できません。', rankNote:'選択した期間に2時間以上勉強した人だけがランクインします（上位20位）。週は月曜日に始まり、すべての期間は UTC 0時（日本時間 午前9時）に切り替わります。勉強時間は一時停止・フェーズ終了・ページを閉じたときに記録されます。公開情報：ニックネーム、国、勉強時間。',
+    ja:{ perAll:'全期間', durD:'{d}日{h}時間', perDay:'今日', perWeek:'今週', perMonth:'今月', rankTitleW:'今週の世界勉強ランキング', rankTitleM:'今月の世界勉強ランキング', yourWeek:'今週の集中時間', yourMonth:'今月の集中時間', emptyRankW:'今週はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', emptyRankM:'今月はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', onBoardW:'今週のランキングに入っています。', onBoardM:'今月のランキングに入っています。', wsTitle:'国別の勉強状況', liveLabel:'ライブ', updatedAt:' · {t} 更新', colCountry:'国', colVisits:'訪問', colStudied:'勉強時間', emptyStats:'まだ訪問記録がありません。', statsTitle:'累計', statVisits:'訪問', statCountries:'国', statStudied:'みんなの勉強時間', visitsByCountry:'国別の訪問', visitsN:'{n}回', stripLine:'{c}か国から{v}回の訪問 · みんなで{h}勉強しました', statsNote:'総勉強時間の順に15秒ごとに更新されます。訪問はブラウザごとに1日（UTC）1回として数え、国のみを保存します。', onBoard:'今日のランキングに入っています。', needMore:'ランクインまであと {d}（2時間以上）', tabTimer:'タイマー', tabRank:'世界ランキング', rankTitle:'今日の世界勉強ランキング', resetIn:'{day} UTC · あと {d} でリセット', refresh:'更新', yourRank:'あなたの順位', yourToday:'今日の集中時間', studyingToday:'ランクイン', peopleN:'{n} 人', nickname:'ニックネーム', saveName:'保存', nameSaved:'ニックネームを保存しました', individuals:'個人ランキング TOP 20', countries:'国別ランキング', meTag:'あなた', emptyRank:'今日はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', offline:'ランキングは公開サイトで動作します。ここでは表示できません。', rankNote:'選択した期間に2時間以上勉強した人だけがランクインします（上位20位）。週は月曜日に始まり、すべての期間は UTC 0時（日本時間 午前9時）に切り替わります。勉強時間は一時停止・フェーズ終了・ページを閉じたときに記録されます。公開情報：ニックネーム、国、勉強時間。',
       howTitle:'使い方', setupTitle:'時間設定', presets:'プリセット', cycle:'1サイクル', durH:'{h}時間{m}分', durM:'{m}分', applyNext:'タイマー作動中の変更は次のフェーズから反映されます。', s1:'<b>開始</b>を押すと {study} 分の集中が始まります。', s2:'終わると通知音が鳴り、{rest} 分の休憩が自動で始まります。', s3:'休憩が終わると次の集中が自動で始まり、一時停止するまで繰り返します。', s4:'{every} 回集中するごとに、休憩の代わりに {long} 分の長い休憩になります。', s4off:'長い休憩はオフなので、集中と休憩を交互に繰り返します。', s5:'ミニタイマーを表示すると、他のウィンドウの上に残り時間が表示され続けます。',
       settings:'設定', study:'集中', rest:'休憩', long:'長い休憩', start:'開始', pause:'一時停止', resume:'再開',
       today:'今日 {n} 回完了', paused:'一時停止中 · ', dots:'長い休憩まであと {n} 回', resetTitle:'最初から（集中から再開）', skipTitle:'次のフェーズへスキップ',
@@ -381,7 +388,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
       hint:'<kbd>Space</kbd> 開始/一時停止 · <kbd>R</kbd> 最初から · <kbd>N</kbd> スキップ · <kbd>P</kbd> ミニタイマー',
       setLongOn:'長い休憩を使う', setEvery:'長い休憩の間隔', setVol:'通知音の音量', min:'分', everyUnit:'回ごと', testSound:'音を確認', save:'保存',
       toStudy:'休憩終了。{m}分の集中を開始', toRest:'集中終了。{m}分の{name}を開始', saved:'設定を保存しました。時間の変更は次のフェーズから反映されます。' },
-    zh:{ durD:'{d}天{h}小时', perDay:'今天', perWeek:'本周', perMonth:'本月', rankTitleW:'本周全球学习排名', rankTitleM:'本月全球学习排名', yourWeek:'我本周专注', yourMonth:'我本月专注', emptyRankW:'本周还没有人学习满 2 小时。来做第一个吧。', emptyRankM:'本月还没有人学习满 2 小时。来做第一个吧。', onBoardW:'你已登上本周排行榜。', onBoardM:'你已登上本月排行榜。', wsTitle:'各国学习情况', liveLabel:'实时', updatedAt:' · {t} 更新', colCountry:'国家', colVisits:'访问', colStudied:'学习时长', emptyStats:'暂无访问记录。', statsTitle:'累计统计', statVisits:'访问', statCountries:'国家', statStudied:'共同学习时长', visitsByCountry:'各国访问', visitsN:'{n} 次', stripLine:'来自 {c} 个国家的 {v} 次访问 · 共同学习 {h}', statsNote:'按总学习时长排序，每 15 秒刷新。每个浏览器每天（UTC）计一次访问，仅保存国家。', onBoard:'你已登上今日排行榜。', needMore:'再学习 {d} 即可上榜（满 2 小时）', tabTimer:'计时器', tabRank:'世界排名', rankTitle:'今日全球学习排名', resetIn:'{day} UTC · {d} 后重置', refresh:'刷新', yourRank:'我的排名', yourToday:'我今日专注', studyingToday:'上榜人数', peopleN:'{n} 人', nickname:'昵称', saveName:'保存', nameSaved:'昵称已保存', individuals:'个人排名 TOP 20', countries:'国家排名', meTag:'我', emptyRank:'今天还没有人学习满 2 小时。来做第一个吧。', offline:'排名在正式网站上可用，这里无法显示。', rankNote:'只有在所选期间学习满 2 小时的人才会上榜（前 20 名）。每周从周一开始，所有期间在 UTC 0 点（北京时间上午 8 点）切换。暂停、阶段结束或关闭页面时会记录学习时间。公开信息：昵称、国家、学习时长。',
+    zh:{ perAll:'全部', durD:'{d}天{h}小时', perDay:'今天', perWeek:'本周', perMonth:'本月', rankTitleW:'本周全球学习排名', rankTitleM:'本月全球学习排名', yourWeek:'我本周专注', yourMonth:'我本月专注', emptyRankW:'本周还没有人学习满 2 小时。来做第一个吧。', emptyRankM:'本月还没有人学习满 2 小时。来做第一个吧。', onBoardW:'你已登上本周排行榜。', onBoardM:'你已登上本月排行榜。', wsTitle:'各国学习情况', liveLabel:'实时', updatedAt:' · {t} 更新', colCountry:'国家', colVisits:'访问', colStudied:'学习时长', emptyStats:'暂无访问记录。', statsTitle:'累计统计', statVisits:'访问', statCountries:'国家', statStudied:'共同学习时长', visitsByCountry:'各国访问', visitsN:'{n} 次', stripLine:'来自 {c} 个国家的 {v} 次访问 · 共同学习 {h}', statsNote:'按总学习时长排序，每 15 秒刷新。每个浏览器每天（UTC）计一次访问，仅保存国家。', onBoard:'你已登上今日排行榜。', needMore:'再学习 {d} 即可上榜（满 2 小时）', tabTimer:'计时器', tabRank:'世界排名', rankTitle:'今日全球学习排名', resetIn:'{day} UTC · {d} 后重置', refresh:'刷新', yourRank:'我的排名', yourToday:'我今日专注', studyingToday:'上榜人数', peopleN:'{n} 人', nickname:'昵称', saveName:'保存', nameSaved:'昵称已保存', individuals:'个人排名 TOP 20', countries:'国家排名', meTag:'我', emptyRank:'今天还没有人学习满 2 小时。来做第一个吧。', offline:'排名在正式网站上可用，这里无法显示。', rankNote:'只有在所选期间学习满 2 小时的人才会上榜（前 20 名）。每周从周一开始，所有期间在 UTC 0 点（北京时间上午 8 点）切换。暂停、阶段结束或关闭页面时会记录学习时间。公开信息：昵称、国家、学习时长。',
       howTitle:'使用方法', setupTitle:'时间设置', presets:'快速选择', cycle:'一个完整循环', durH:'{h}小时{m}分钟', durM:'{m}分钟', applyNext:'计时进行中修改，将从下一阶段生效。', s1:'按下<b>开始</b>，{study} 分钟专注开始。', s2:'结束时响起提示音，{rest} 分钟休息自动开始。', s3:'休息结束后，下一轮专注自动开始，直到暂停为止一直循环。', s4:'每完成 {every} 次专注，就用 {long} 分钟长休息代替普通休息。', s4off:'已关闭长休息，只在专注和休息之间交替。', s5:'弹出迷你计时器后，剩余时间会一直显示在其他窗口上方。',
       settings:'设置', study:'专注', rest:'休息', long:'长休息', start:'开始', pause:'暂停', resume:'继续',
       today:'今天完成 {n} 次', paused:'已暂停 · ', dots:'距长休息还有 {n} 次', resetTitle:'从头开始（重新专注）', skipTitle:'跳到下一阶段',
@@ -737,7 +744,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
     const people = $('boardPeople'), ctry = $('boardCountries');
     $('rankTitle').textContent = pt('rankTitle', 'rankTitle');
     $('meMinLabel').textContent = rankPeriod === 'day' ? t('yourToday') : t(rankPeriod === 'week' ? 'yourWeek' : 'yourMonth');
-    document.querySelectorAll('.periods button').forEach(b => b.setAttribute('aria-selected', b.dataset.period === rankPeriod));
+    document.querySelectorAll('.rankview .periods button').forEach(b => b.setAttribute('aria-selected', b.dataset.period === rankPeriod));
     if (loading) { emptyRow(people, '…'); emptyRow(ctry, '…'); return; }
     if (rankOffline || !d) {
       $('rankSub').textContent = ''; $('meNeed').textContent = ''; ['meRank', 'meMin', 'totPeople'].forEach(k => $(k).textContent = '–');
@@ -774,7 +781,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
   $('tab-timer').onclick = () => setView('timer');
   $('tab-rank').onclick = () => setView('rank');
   $('rankRefresh').onclick = loadRanking;
-  document.querySelectorAll('.periods button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.rankview .periods button').forEach(b => b.onclick = () => {
     if (rankPeriod === b.dataset.period) return;
     rankPeriod = b.dataset.period; store.set('rankPeriod', rankPeriod);
     rankData = null; renderRanking(null, true); loadRanking();
@@ -783,12 +790,16 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
   // ── Site stats: one visit per browser per UTC day, all-time visits by country, total focus time ──
   const STATS = '/api/stats';
   let statsData = null;
+  let wsPeriod = ['day', 'week', 'month', 'all'].includes(store.get('wsPeriod', 'all')) ? store.get('wsPeriod', 'all') : 'all';
   const nf = n => { try { return new Intl.NumberFormat(lang).format(n); } catch { return String(n); } };
   async function loadStats(){
     try {
-      const r = await fetch(STATS);
+      const want = wsPeriod;
+      const r = await fetch(STATS + '?period=' + want);
       if (!r.ok) throw new Error(r.status);
-      statsData = await r.json(); statsData.loadedAt = Date.now();
+      const data = await r.json();
+      if (want !== wsPeriod) return;   // the period changed while this request was in flight
+      statsData = data; statsData.loadedAt = Date.now();
     } catch { statsData = null; }
     renderStats(statsData);
   }
@@ -796,6 +807,7 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
   let lastOrder = [];
   function renderStats(d){
     const board = $('wsBoard');
+    document.querySelectorAll('.ws-periods button').forEach(b => b.setAttribute('aria-selected', b.dataset.wsp === wsPeriod));
     if (!d) {
       ['stVisits', 'stCountries', 'stStudied'].forEach(k => $(k).textContent = '–');
       $('wsUpdated').textContent = '';
@@ -847,6 +859,14 @@ ol.ws-board{list-style:none;margin:0;padding:0;display:flex;flex-direction:colum
     });
     lastOrder = d.byCountry.map(c => c.country);
   }
+  document.querySelectorAll('.ws-periods button').forEach(b => b.onclick = () => {
+    if (wsPeriod === b.dataset.wsp) return;
+    wsPeriod = b.dataset.wsp; store.set('wsPeriod', wsPeriod);
+    lastOrder = []; $('wsBoard').innerHTML = '';   // a new period is a new list, not a reorder
+    statsData = null;
+    document.querySelectorAll('.ws-periods button').forEach(x => x.setAttribute('aria-selected', x === b));
+    loadStats();
+  });
   async function recordVisit(){
     const today = new Date().toISOString().slice(0, 10);
     if (store.get('visitDay', '') === today) return;

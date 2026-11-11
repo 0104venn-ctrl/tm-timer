@@ -14,7 +14,7 @@
 - ⚙️ **Custom durations** for focus, break, long break and long-break interval, plus presets 25/5/15 · 50/10/30 · 90/20/30
 - 🌍 **World ranking by day, week or month** — the top 20 people with 2+ hours in the period, plus a country ranking
 - 🈯 **Four languages** — English, Korean, Japanese, Chinese
-- 📊 **Live country board** — visits and total focus time per country under the timer, refreshed every 15 seconds; rows slide to their new place when the ranking changes
+- 📊 **Live country board** — visits and focus time per country under the timer for today, this week, this month or all time, refreshed every 15 seconds; rows slide to their new place when the ranking changes
 
 ![World ranking](docs/screenshot-ranking.png)
 
