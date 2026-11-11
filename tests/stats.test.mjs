@@ -44,7 +44,7 @@ clock += 24 * 3600e3;
 await visit(uid(1), 'KR');
 s = await stats();
 assert.equal(s.visits, 4); assert.equal(s.visitors, 3); assert.equal(s.today, 1);
-assert.deepEqual(s.byCountry, [{ country: 'KR', visits: 3 }, { country: 'US', visits: 1 }]);
+assert.deepEqual(s.byCountry, [{ country: 'KR', visits: 3, minutes: 0 }, { country: 'US', visits: 1, minutes: 0 }]);
 // 3) unknown / Tor countries are counted as visits but not listed as countries
 await visit(uid(4), 'XX'); await visit(uid(5), 'T1');
 s = await stats();
@@ -54,6 +54,12 @@ raw.prepare('INSERT INTO daily VALUES (?,?,?,?,?)').run('2026-11-10', uid(1), 37
 raw.prepare('INSERT INTO daily VALUES (?,?,?,?,?)').run('2026-11-11', uid(3), 50, 2, clock);
 s = await stats();
 assert.equal(s.studyMinutes, 425); assert.equal(s.studySessions, 18);
+// focus time per country comes from users.country; the country with more focus time ranks first
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(uid(1), 'a', 'KR', clock);
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(uid(3), 'b', 'US', clock);
+raw.prepare('INSERT INTO daily VALUES (?,?,?,?,?)').run('2026-11-12', uid(3), 400, 16, clock);
+s = await stats();
+assert.deepEqual(s.byCountry.map(c => [c.country, c.visits, c.minutes]), [['US', 1, 450], ['KR', 3, 375]]);
 // 5) invalid input
 const bad = async (body) => (await api.onRequestPost({ env, request: new Request('https://x/api/stats', { method: 'POST', body }) })).status;
 assert.equal(await bad(JSON.stringify({ id: 'nope' })), 400);

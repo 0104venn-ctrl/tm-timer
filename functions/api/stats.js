@@ -1,6 +1,6 @@
 // TM Timer site stats API (Cloudflare Pages Functions + D1)
 //   POST /api/stats {id}   record one visit per browser per UTC day (only the country is stored)
-//   GET  /api/stats        all-time visits, visits by country, and total focus time studied on the site
+//   GET  /api/stats        all-time visits, top 10 countries by focus time (with visits), and total focus time
 
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -20,12 +20,15 @@ export async function onRequestGet({ env }) {
             COUNT(DISTINCT CASE WHEN country NOT IN ('XX', 'T1') THEN country END) AS countries,
             SUM(CASE WHEN day = ? THEN 1 ELSE 0 END) AS today
        FROM visits`).bind(day).first();
+  // Visits and all-time focus minutes per country, ranked by focus time (then visits)
   const byCountry = await db.prepare(
-    `SELECT country, COUNT(*) AS visits
-       FROM visits
+    `SELECT country, SUM(visits) AS visits, SUM(minutes) AS minutes
+       FROM (SELECT country, COUNT(*) AS visits, 0 AS minutes FROM visits GROUP BY country
+             UNION ALL
+             SELECT u.country, 0, SUM(d.minutes) FROM daily d JOIN users u ON u.id = d.id GROUP BY u.country)
       WHERE country NOT IN ('XX', 'T1')
       GROUP BY country
-      ORDER BY visits DESC, country ASC
+      ORDER BY minutes DESC, visits DESC, country ASC
       LIMIT 10`).all();
   const study = await db.prepare('SELECT COALESCE(SUM(minutes), 0) AS minutes, COALESCE(SUM(sessions), 0) AS sessions FROM daily').first();
   return json({
@@ -36,7 +39,7 @@ export async function onRequestGet({ env }) {
     byCountry: byCountry.results,
     studyMinutes: study.minutes,
     studySessions: study.sessions
-  }, 200, 'public, max-age=60');
+  }, 200, 'public, max-age=10');
 }
 
 export async function onRequestPost({ request, env }) {
