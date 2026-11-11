@@ -16,3 +16,10 @@ CREATE TABLE IF NOT EXISTS daily (
 );
 
 CREATE INDEX IF NOT EXISTS idx_daily_rank ON daily (day, minutes DESC);
+
+CREATE TABLE IF NOT EXISTS visits (
+  day      TEXT NOT NULL,      -- UTC date YYYY-MM-DD
+  id       TEXT NOT NULL,      -- same random browser UUID as users.id
+  country  TEXT NOT NULL,      -- country code from Cloudflare geolocation
+  PRIMARY KEY (day, id)        -- one visit per browser per day
+);

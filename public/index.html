@@ -160,6 +160,20 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
 .board li.mine .nm::after{content:attr(data-me);margin-left:6px;font-size:11px;font-weight:700;color:#fff;background:var(--study);border-radius:999px;padding:1px 7px}
 .board .empty{display:block;color:var(--muted);font-size:13px;padding:14px 4px;border:0}
 .rank-note{font-size:12px;color:var(--muted);margin:0}
+.site-stats{font-size:13px;color:var(--study);font-weight:600;text-align:center;font-variant-numeric:tabular-nums;min-height:1.5em}
+.stats-card{border:1px solid var(--line);border-radius:16px;padding:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px 28px;align-items:start}
+@media (max-width:800px){.stats-card{grid-template-columns:minmax(0,1fr)}}
+.stats-card h3{font-family:var(--display);font-size:17px;margin:0 0 12px;color:var(--study)}
+.tiles{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.7fr);gap:10px}
+.tile{background:var(--surface);border-radius:12px;padding:12px 14px;min-width:0}
+.tile b{display:block;font-family:var(--mono);font-size:22px;line-height:1.25;color:var(--fg);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile span{font-size:12px;color:var(--muted)}
+ol.vis{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.vis li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14px;padding:6px 10px;border-radius:8px;
+  background:linear-gradient(90deg,var(--accent-soft) var(--w),transparent var(--w))}
+.vis .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vis .mm{font-family:var(--mono);font-weight:700;color:var(--study);font-variant-numeric:tabular-nums}
+.vis .empty{display:block;background:none;color:var(--muted);font-size:13px;padding:4px 0}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--study);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
 .toast.show{opacity:1}
 #pipVideo{position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0}
@@ -232,6 +246,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   </button>
   <div class="note" id="note"></div>
   <div class="hint" id="hint"></div>
+  <div class="site-stats" id="siteStats"></div>
   </section>
 
   <aside class="panel setup" aria-labelledby="setupTitle">
@@ -277,7 +292,22 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
       <div class="rank-card"><h3 data-i="individuals"></h3><ol class="board" id="boardPeople"></ol></div>
       <div class="rank-card"><h3 data-i="countries"></h3><ol class="board" id="boardCountries"></ol></div>
     </div>
+    <div class="stats-card" aria-labelledby="statsTitle">
+      <div>
+        <h3 id="statsTitle" data-i="statsTitle"></h3>
+        <div class="tiles">
+          <div class="tile"><b id="stVisits">–</b><span data-i="statVisits"></span></div>
+          <div class="tile"><b id="stCountries">–</b><span data-i="statCountries"></span></div>
+          <div class="tile"><b id="stStudied">–</b><span data-i="statStudied"></span></div>
+        </div>
+      </div>
+      <div>
+        <h3 data-i="visitsByCountry"></h3>
+        <ol class="vis" id="visByCountry"></ol>
+      </div>
+    </div>
     <p class="rank-note" data-i="rankNote"></p>
+    <p class="rank-note" data-i="statsNote"></p>
   </section>
 </div>
 
@@ -295,7 +325,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   };
   const dayKey = () => new Date().toDateString();
   const L = {
-    en:{ onBoard:"You're on today's board.", needMore:'{d} more to get on the board (2 hours)', tabTimer:'Timer', tabRank:'World Ranking', rankTitle:"Today's world ranking", resetIn:'{day} UTC · resets in {d}', refresh:'Refresh', yourRank:'Your rank', yourToday:'Your focus today', studyingToday:'On the board', peopleN:'{n} people', nickname:'Nickname', saveName:'Save', nameSaved:'Nickname saved', individuals:'Top 20', countries:'Countries', meTag:'You', emptyRank:'No one has studied 2 hours yet today. Be the first.', offline:'The ranking works on the published site. It is not available here.', rankNote:'Only people with 2+ hours of focus today are ranked (top 20). Focus time is saved when you pause, finish a phase or close the page. The day resets at 00:00 UTC. Shown publicly: nickname, country and today\'s focus time.',
+    en:{ statsTitle:'All-time', statVisits:'Visits', statCountries:'Countries', statStudied:'Studied together', visitsByCountry:'Visits by country', visitsN:'{n} visits', stripLine:'{v} visits from {c} countries · {h} studied together', statsNote:'Visits are counted once per browser per UTC day; only the country is stored.', onBoard:"You're on today's board.", needMore:'{d} more to get on the board (2 hours)', tabTimer:'Timer', tabRank:'World Ranking', rankTitle:"Today's world ranking", resetIn:'{day} UTC · resets in {d}', refresh:'Refresh', yourRank:'Your rank', yourToday:'Your focus today', studyingToday:'On the board', peopleN:'{n} people', nickname:'Nickname', saveName:'Save', nameSaved:'Nickname saved', individuals:'Top 20', countries:'Countries', meTag:'You', emptyRank:'No one has studied 2 hours yet today. Be the first.', offline:'The ranking works on the published site. It is not available here.', rankNote:'Only people with 2+ hours of focus today are ranked (top 20). Focus time is saved when you pause, finish a phase or close the page. The day resets at 00:00 UTC. Shown publicly: nickname, country and today\'s focus time.',
       howTitle:'How it works', setupTitle:'Your times', presets:'Quick picks', cycle:'One full cycle', durH:'{h}h {m}m', durM:'{m} min', applyNext:'Changes made while the timer runs apply from the next phase.', s1:'Press <b>Start</b>. A {study}-min focus session begins.', s2:'When it ends, a chime plays and a {rest}-min break starts on its own.', s3:'After the break, the next focus session starts automatically. It keeps looping until you pause.', s4:'After every {every}th focus session you get a {long}-min long break instead.', s4off:'Long breaks are off, so it simply alternates focus and break.', s5:'Pop out the mini timer to keep the countdown on top of other windows.',
       settings:'Settings', study:'Focus', rest:'Break', long:'Long break', start:'Start', pause:'Pause', resume:'Resume',
       today:'{n} done today', paused:'Paused · ', dots:'{n} more until long break', resetTitle:'Restart from focus', skipTitle:'Skip to next phase',
@@ -304,7 +334,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
       hint:'<kbd>Space</kbd> start/pause · <kbd>R</kbd> restart · <kbd>N</kbd> skip · <kbd>P</kbd> mini timer',
       setLongOn:'Use long breaks', setEvery:'Long break every', setVol:'Alert volume', min:'min', everyUnit:'sessions', testSound:'Test sound', save:'Save',
       toStudy:'Break over. {m}-min focus starts', toRest:'Focus done. {m}-min {name} starts', saved:'Settings saved. Time changes apply from the next phase.' },
-    ko:{ onBoard:'오늘 순위에 올랐습니다.', needMore:'순위 진입까지 {d} 남았습니다 (2시간 기준)', tabTimer:'타이머', tabRank:'세계 순위', rankTitle:'오늘의 세계 공부 순위', resetIn:'{day} UTC 기준 · {d} 후 초기화', refresh:'새로고침', yourRank:'내 순위', yourToday:'오늘 내 공부', studyingToday:'순위 진입', peopleN:'{n}명', nickname:'닉네임', saveName:'저장', nameSaved:'닉네임을 저장했습니다', individuals:'개인 순위 TOP 20', countries:'국가 순위', meTag:'나', emptyRank:'오늘 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', offline:'순위는 배포된 사이트에서 작동합니다. 여기서는 볼 수 없습니다.', rankNote:'오늘 2시간 이상 공부한 사람만 순위에 오릅니다(상위 20위). 공부 시간은 일시정지하거나 단계가 끝나거나 창을 닫을 때 기록됩니다. 하루는 UTC 0시(한국 오전 9시)에 초기화됩니다. 공개 정보: 닉네임, 국가, 오늘 공부 시간.',
+    ko:{ statsTitle:'누적 통계', statVisits:'방문', statCountries:'국가', statStudied:'함께 공부한 시간', visitsByCountry:'나라별 방문', visitsN:'{n}회', stripLine:'{c}개국에서 {v}번 방문 · 함께 {h} 공부했어요', statsNote:'방문은 브라우저당 하루(UTC) 1회로 세고, 국가만 저장합니다.', onBoard:'오늘 순위에 올랐습니다.', needMore:'순위 진입까지 {d} 남았습니다 (2시간 기준)', tabTimer:'타이머', tabRank:'세계 순위', rankTitle:'오늘의 세계 공부 순위', resetIn:'{day} UTC 기준 · {d} 후 초기화', refresh:'새로고침', yourRank:'내 순위', yourToday:'오늘 내 공부', studyingToday:'순위 진입', peopleN:'{n}명', nickname:'닉네임', saveName:'저장', nameSaved:'닉네임을 저장했습니다', individuals:'개인 순위 TOP 20', countries:'국가 순위', meTag:'나', emptyRank:'오늘 아직 2시간 이상 공부한 사람이 없습니다. 첫 번째가 되어 보세요.', offline:'순위는 배포된 사이트에서 작동합니다. 여기서는 볼 수 없습니다.', rankNote:'오늘 2시간 이상 공부한 사람만 순위에 오릅니다(상위 20위). 공부 시간은 일시정지하거나 단계가 끝나거나 창을 닫을 때 기록됩니다. 하루는 UTC 0시(한국 오전 9시)에 초기화됩니다. 공개 정보: 닉네임, 국가, 오늘 공부 시간.',
       howTitle:'진행 방식', setupTitle:'내 시간 설정', presets:'빠른 선택', cycle:'한 바퀴', durH:'{h}시간 {m}분', durM:'{m}분', applyNext:'타이머가 돌아가는 중에 바꾸면 다음 단계부터 적용됩니다.', s1:'<b>시작</b>을 누르면 {study}분 공부가 시작됩니다.', s2:'공부가 끝나면 알림음과 함께 {rest}분 휴식이 자동으로 시작됩니다.', s3:'휴식이 끝나면 다음 공부가 자동으로 시작되고, 일시정지할 때까지 계속 반복됩니다.', s4:'공부 {every}번째마다 휴식 대신 {long}분 긴 휴식이 들어갑니다.', s4off:'긴 휴식을 꺼 두어서 공부와 휴식만 번갈아 반복합니다.', s5:'작은 창을 띄우면 다른 창 위에 남은 시간이 계속 표시됩니다.',
       settings:'설정', study:'공부', rest:'휴식', long:'긴 휴식', start:'시작', pause:'일시정지', resume:'계속',
       today:'오늘 {n}회 완료', paused:'일시정지 · ', dots:'긴 휴식까지 {n}회', resetTitle:'처음부터 (공부부터 다시)', skipTitle:'다음 단계로 건너뛰기',
@@ -313,7 +343,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
       hint:'<kbd>Space</kbd> 시작/일시정지 · <kbd>R</kbd> 처음부터 · <kbd>N</kbd> 건너뛰기 · <kbd>P</kbd> 작은 창',
       setLongOn:'긴 휴식 사용', setEvery:'긴 휴식 간격', setVol:'알림음 크기', min:'분', everyUnit:'회마다', testSound:'소리 확인', save:'저장',
       toStudy:'휴식 끝. {m}분 공부 시작', toRest:'공부 끝. {m}분 {name} 시작', saved:'설정을 저장했습니다. 시간 변경은 다음 단계부터 적용됩니다.' },
-    ja:{ onBoard:'今日のランキングに入っています。', needMore:'ランクインまであと {d}（2時間以上）', tabTimer:'タイマー', tabRank:'世界ランキング', rankTitle:'今日の世界勉強ランキング', resetIn:'{day} UTC · あと {d} でリセット', refresh:'更新', yourRank:'あなたの順位', yourToday:'今日の集中時間', studyingToday:'ランクイン', peopleN:'{n} 人', nickname:'ニックネーム', saveName:'保存', nameSaved:'ニックネームを保存しました', individuals:'個人ランキング TOP 20', countries:'国別ランキング', meTag:'あなた', emptyRank:'今日はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', offline:'ランキングは公開サイトで動作します。ここでは表示できません。', rankNote:'今日2時間以上勉強した人だけがランクインします（上位20位）。勉強時間は一時停止・フェーズ終了・ページを閉じたときに記録されます。1日は UTC 0時（日本時間 午前9時）にリセットされます。公開情報：ニックネーム、国、今日の勉強時間。',
+    ja:{ statsTitle:'累計', statVisits:'訪問', statCountries:'国', statStudied:'みんなの勉強時間', visitsByCountry:'国別の訪問', visitsN:'{n}回', stripLine:'{c}か国から{v}回の訪問 · みんなで{h}勉強しました', statsNote:'訪問はブラウザごとに1日（UTC）1回として数え、国のみを保存します。', onBoard:'今日のランキングに入っています。', needMore:'ランクインまであと {d}（2時間以上）', tabTimer:'タイマー', tabRank:'世界ランキング', rankTitle:'今日の世界勉強ランキング', resetIn:'{day} UTC · あと {d} でリセット', refresh:'更新', yourRank:'あなたの順位', yourToday:'今日の集中時間', studyingToday:'ランクイン', peopleN:'{n} 人', nickname:'ニックネーム', saveName:'保存', nameSaved:'ニックネームを保存しました', individuals:'個人ランキング TOP 20', countries:'国別ランキング', meTag:'あなた', emptyRank:'今日はまだ2時間以上勉強した人がいません。最初の1人になりましょう。', offline:'ランキングは公開サイトで動作します。ここでは表示できません。', rankNote:'今日2時間以上勉強した人だけがランクインします（上位20位）。勉強時間は一時停止・フェーズ終了・ページを閉じたときに記録されます。1日は UTC 0時（日本時間 午前9時）にリセットされます。公開情報：ニックネーム、国、今日の勉強時間。',
       howTitle:'使い方', setupTitle:'時間設定', presets:'プリセット', cycle:'1サイクル', durH:'{h}時間{m}分', durM:'{m}分', applyNext:'タイマー作動中の変更は次のフェーズから反映されます。', s1:'<b>開始</b>を押すと {study} 分の集中が始まります。', s2:'終わると通知音が鳴り、{rest} 分の休憩が自動で始まります。', s3:'休憩が終わると次の集中が自動で始まり、一時停止するまで繰り返します。', s4:'{every} 回集中するごとに、休憩の代わりに {long} 分の長い休憩になります。', s4off:'長い休憩はオフなので、集中と休憩を交互に繰り返します。', s5:'ミニタイマーを表示すると、他のウィンドウの上に残り時間が表示され続けます。',
       settings:'設定', study:'集中', rest:'休憩', long:'長い休憩', start:'開始', pause:'一時停止', resume:'再開',
       today:'今日 {n} 回完了', paused:'一時停止中 · ', dots:'長い休憩まであと {n} 回', resetTitle:'最初から（集中から再開）', skipTitle:'次のフェーズへスキップ',
@@ -322,7 +352,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
       hint:'<kbd>Space</kbd> 開始/一時停止 · <kbd>R</kbd> 最初から · <kbd>N</kbd> スキップ · <kbd>P</kbd> ミニタイマー',
       setLongOn:'長い休憩を使う', setEvery:'長い休憩の間隔', setVol:'通知音の音量', min:'分', everyUnit:'回ごと', testSound:'音を確認', save:'保存',
       toStudy:'休憩終了。{m}分の集中を開始', toRest:'集中終了。{m}分の{name}を開始', saved:'設定を保存しました。時間の変更は次のフェーズから反映されます。' },
-    zh:{ onBoard:'你已登上今日排行榜。', needMore:'再学习 {d} 即可上榜（满 2 小时）', tabTimer:'计时器', tabRank:'世界排名', rankTitle:'今日全球学习排名', resetIn:'{day} UTC · {d} 后重置', refresh:'刷新', yourRank:'我的排名', yourToday:'我今日专注', studyingToday:'上榜人数', peopleN:'{n} 人', nickname:'昵称', saveName:'保存', nameSaved:'昵称已保存', individuals:'个人排名 TOP 20', countries:'国家排名', meTag:'我', emptyRank:'今天还没有人学习满 2 小时。来做第一个吧。', offline:'排名在正式网站上可用，这里无法显示。', rankNote:'只有今天学习满 2 小时的人才会上榜（前 20 名）。暂停、阶段结束或关闭页面时会记录学习时间。每天在 UTC 0 点（北京时间上午 8 点）重置。公开信息：昵称、国家、今日学习时长。',
+    zh:{ statsTitle:'累计统计', statVisits:'访问', statCountries:'国家', statStudied:'共同学习时长', visitsByCountry:'各国访问', visitsN:'{n} 次', stripLine:'来自 {c} 个国家的 {v} 次访问 · 共同学习 {h}', statsNote:'每个浏览器每天（UTC）计一次访问，仅保存国家。', onBoard:'你已登上今日排行榜。', needMore:'再学习 {d} 即可上榜（满 2 小时）', tabTimer:'计时器', tabRank:'世界排名', rankTitle:'今日全球学习排名', resetIn:'{day} UTC · {d} 后重置', refresh:'刷新', yourRank:'我的排名', yourToday:'我今日专注', studyingToday:'上榜人数', peopleN:'{n} 人', nickname:'昵称', saveName:'保存', nameSaved:'昵称已保存', individuals:'个人排名 TOP 20', countries:'国家排名', meTag:'我', emptyRank:'今天还没有人学习满 2 小时。来做第一个吧。', offline:'排名在正式网站上可用，这里无法显示。', rankNote:'只有今天学习满 2 小时的人才会上榜（前 20 名）。暂停、阶段结束或关闭页面时会记录学习时间。每天在 UTC 0 点（北京时间上午 8 点）重置。公开信息：昵称、国家、今日学习时长。',
       howTitle:'使用方法', setupTitle:'时间设置', presets:'快速选择', cycle:'一个完整循环', durH:'{h}小时{m}分钟', durM:'{m}分钟', applyNext:'计时进行中修改，将从下一阶段生效。', s1:'按下<b>开始</b>，{study} 分钟专注开始。', s2:'结束时响起提示音，{rest} 分钟休息自动开始。', s3:'休息结束后，下一轮专注自动开始，直到暂停为止一直循环。', s4:'每完成 {every} 次专注，就用 {long} 分钟长休息代替普通休息。', s4off:'已关闭长休息，只在专注和休息之间交替。', s5:'弹出迷你计时器后，剩余时间会一直显示在其他窗口上方。',
       settings:'设置', study:'专注', rest:'休息', long:'长休息', start:'开始', pause:'暂停', resume:'继续',
       today:'今天完成 {n} 次', paused:'已暂停 · ', dots:'距长休息还有 {n} 次', resetTitle:'从头开始（重新专注）', skipTitle:'跳到下一阶段',
@@ -348,6 +378,7 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
     $('toggle').textContent = running ? t('pause') : (remaining < total ? t('resume') : t('start'));
     pipLabel(); renderStatic(); renderGuide(); render();
     if (rankData) renderRanking(rankData); else if (document.body.dataset.view === 'rank') loadRanking();
+    if (statsData) renderStats(statsData);
   }
   const PIPCOL = { study:'#1e8e4e', rest:'#4fae72', long:'#0e7c72' };
 
@@ -703,8 +734,51 @@ ol.board{list-style:none;margin:0;padding:0;max-height:560px;overflow:auto}
   }
   $('tab-timer').onclick = () => setView('timer');
   $('tab-rank').onclick = () => setView('rank');
-  $('rankRefresh').onclick = loadRanking;
-  setInterval(() => { if (document.body.dataset.view === 'rank' && !document.hidden) loadRanking(); }, 60000);
+  $('rankRefresh').onclick = () => { loadRanking(); loadStats(); };
+
+  // ── Site stats: one visit per browser per UTC day, all-time visits by country, total focus time ──
+  const STATS = '/api/stats';
+  let statsData = null;
+  const nf = n => { try { return new Intl.NumberFormat(lang).format(n); } catch { return String(n); } };
+  async function loadStats(){
+    try {
+      const r = await fetch(STATS);
+      if (!r.ok) throw new Error(r.status);
+      statsData = await r.json();
+    } catch { statsData = null; }
+    renderStats(statsData);
+  }
+  function renderStats(d){
+    const list = $('visByCountry');
+    if (!d) {
+      $('siteStats').textContent = '';
+      ['stVisits', 'stCountries', 'stStudied'].forEach(k => $(k).textContent = '–');
+      emptyRow(list, t('offline')); return;
+    }
+    const studied = fmtDur(d.studyMinutes);
+    $('siteStats').textContent = d.visits ? t('stripLine', { v: nf(d.visits), c: nf(d.countries), h: studied }) : '';
+    $('stVisits').textContent = nf(d.visits);
+    $('stCountries').textContent = nf(d.countries);
+    $('stStudied').textContent = studied;
+    if (!d.byCountry.length) { emptyRow(list, '—'); return; }
+    list.innerHTML = '';
+    const top = d.byCountry[0].visits;
+    d.byCountry.forEach(c => {
+      const el = li('', [['nm', regionName(c.country)], ['mm', t('visitsN', { n: nf(c.visits) })]]);
+      el.style.setProperty('--w', Math.max(4, Math.round(c.visits / top * 100)) + '%');
+      list.appendChild(el);
+    });
+  }
+  async function recordVisit(){
+    const today = new Date().toISOString().slice(0, 10);
+    if (store.get('visitDay', '') === today) return;
+    try {
+      const r = await fetch(STATS, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: uid }) });
+      if (r.ok) store.set('visitDay', today);
+    } catch {}
+  }
+  recordVisit().finally(loadStats);
+  setInterval(() => { if (document.body.dataset.view === 'rank' && !document.hidden) { loadRanking(); loadStats(); } }, 60000);
   $('nick').value = nick;
   $('nameForm').addEventListener('submit', async e => {
     e.preventDefault();
