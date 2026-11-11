@@ -78,4 +78,30 @@ assert.equal(raw.prepare('SELECT last_at FROM users WHERE id = ?').get(A).last_a
 clock = Date.parse('2026-10-05T00:01:00Z');
 g = await get(A);
 assert.equal(g.top.length, 0); assert.equal(g.me.minutes, 0); assert.equal(g.day, '2026-10-05');
+// 9) week and month periods (UTC): 2026-11-11 is a Wednesday, so the week starts Monday 11-09
+clock = Date.parse('2026-11-11T12:00:00Z');
+const X = uid(900), Y = uid(901);
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(X, 'X', 'KR', clock);
+raw.prepare('INSERT INTO users VALUES (?,?,?,?)').run(Y, 'Y', 'US', clock);
+for (const [day, id, m] of [['2026-11-11', X, 100], ['2026-11-09', X, 50], ['2026-11-08', X, 200], ['2026-10-31', X, 500], ['2026-11-11', Y, 130]])
+  raw.prepare('INSERT INTO daily VALUES (?,?,?,?,?)').run(day, id, m, 1, clock);
+const getP = async (period, id = X) => (await api.onRequestGet({ env, request: Object.assign(new Request(`https://x/api/ranking?id=${id}&period=${period}`), { cf: { country: 'KR' } }) })).json();
+let p = await getP('day');
+assert.deepEqual(p.top.map(x => [x.name, x.minutes]), [['Y', 130]]);          // X has only 100 min today
+assert.equal(p.me.minutes, 100); assert.equal(p.me.rank, null);
+p = await getP('week');
+assert.equal(p.from, '2026-11-09'); assert.equal(p.to, '2026-11-11');
+assert.deepEqual(p.top.map(x => [x.name, x.minutes, x.mine]), [['X', 150, 1], ['Y', 130, 0]]);
+assert.equal(p.me.rank, 1); assert.equal(p.total.people, 2);
+assert.equal(p.resetsInMs, Date.parse('2026-11-16T00:00:00Z') - clock);
+p = await getP('month');
+assert.equal(p.from, '2026-11-01');
+assert.deepEqual(p.top.map(x => [x.name, x.minutes]), [['X', 350], ['Y', 130]]);  // 10-31 is last month
+assert.deepEqual(p.countries.map(c => [c.country, c.minutes, c.people]), [['KR', 350, 1], ['US', 130, 1]]);
+assert.equal(p.resetsInMs, Date.parse('2026-12-01T00:00:00Z') - clock);
+p = await getP('year');                                                            // unknown period falls back to day
+assert.equal(p.period, 'day');
+// a Monday's week starts that same day
+clock = Date.parse('2026-11-16T01:00:00Z');
+p = await getP('week'); assert.equal(p.from, '2026-11-16');
 console.log('ALL API TESTS PASSED');

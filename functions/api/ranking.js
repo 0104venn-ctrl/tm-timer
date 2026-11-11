@@ -1,5 +1,7 @@
 // TM Timer world ranking API (Cloudflare Pages Functions + D1)
-//   GET  /api/ranking?id=<uuid>                top 20 people with 2+ hours today (UTC), country ranking, and my standing
+//   GET  /api/ranking?id=<uuid>&period=day|week|month
+//                                              top 20 people with 2+ hours in the period (UTC), country ranking, and my standing.
+//                                              week = Monday to today, month = the 1st to today
 //   POST /api/ranking {id, name, start: true}   timer started (start time recorded on the server clock)
 //   POST /api/ranking {id, name, minutes}       focus minutes since then, sent on pause / phase end / page close (0 = rename only)
 //
@@ -32,36 +34,65 @@ async function myStanding(db, day, id) {
   return { minutes: row.minutes, sessions: row.sessions, rank: ahead.n + 1 };
 }
 
+const DAY_MS = 86400000;
+const PERIODS = ['day', 'week', 'month'];
+
+// [from, to] UTC dates of the current period, and when the next one starts
+function periodRange(period, now) {
+  const today = Date.parse(utcDay(now) + 'T00:00:00Z');
+  let from = today, next = today + DAY_MS;
+  if (period === 'week') {
+    const dow = (new Date(today).getUTCDay() + 6) % 7;   // Monday = 0
+    from = today - dow * DAY_MS; next = from + 7 * DAY_MS;
+  } else if (period === 'month') {
+    const d = new Date(today);
+    from = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1);
+  }
+  return { from: utcDay(from), to: utcDay(today), next };
+}
+
+// Per-user totals over the period
+const PER = `WITH per AS (
+  SELECT id, SUM(minutes) AS minutes, SUM(sessions) AS sessions, MAX(updated_at) AS last
+    FROM daily WHERE day BETWEEN ? AND ? GROUP BY id)`;
+
 export async function onRequestGet({ request, env }) {
   const db = env.DB;
   const now = Date.now();
-  const day = utcDay(now);
-  const id = new URL(request.url).searchParams.get('id') || '';
+  const url = new URL(request.url);
+  const id = url.searchParams.get('id') || '';
+  const period = PERIODS.includes(url.searchParams.get('period')) ? url.searchParams.get('period') : 'day';
+  const { from, to, next } = periodRange(period, now);
 
-  const top = await db.prepare(
-    `SELECT u.name, u.country, d.minutes, d.sessions, (d.id = ?) AS mine
-       FROM daily d JOIN users u ON u.id = d.id
-      WHERE d.day = ? AND d.minutes >= ?
-      ORDER BY d.minutes DESC, d.updated_at ASC
-      LIMIT ?`).bind(id, day, QUALIFY, TOP).all();
-  const countries = await db.prepare(
-    `SELECT u.country, SUM(d.minutes) AS minutes, COUNT(*) AS people
-       FROM daily d JOIN users u ON u.id = d.id
-      WHERE d.day = ? AND d.minutes >= ?
-      GROUP BY u.country
-      ORDER BY minutes DESC
-      LIMIT ?`).bind(day, QUALIFY, TOP).all();
-  const total = await db.prepare('SELECT COUNT(*) AS people, COALESCE(SUM(minutes), 0) AS minutes FROM daily WHERE day = ? AND minutes >= ?').bind(day, QUALIFY).first();
+  const top = await db.prepare(`${PER}
+    SELECT u.name, u.country, p.minutes, p.sessions, (p.id = ?) AS mine
+      FROM per p JOIN users u ON u.id = p.id
+     WHERE p.minutes >= ?
+     ORDER BY p.minutes DESC, p.last ASC
+     LIMIT ?`).bind(from, to, id, QUALIFY, TOP).all();
+  const countries = await db.prepare(`${PER}
+    SELECT u.country, SUM(p.minutes) AS minutes, COUNT(*) AS people
+      FROM per p JOIN users u ON u.id = p.id
+     WHERE p.minutes >= ?
+     GROUP BY u.country
+     ORDER BY minutes DESC
+     LIMIT ?`).bind(from, to, QUALIFY, TOP).all();
+  const total = await db.prepare(`${PER}
+    SELECT COUNT(*) AS people, COALESCE(SUM(minutes), 0) AS minutes FROM per WHERE minutes >= ?`).bind(from, to, QUALIFY).first();
 
   let me = null;
   if (ID_RE.test(id)) {
     const u = await db.prepare('SELECT name, country FROM users WHERE id = ?').bind(id).first();
-    const st = await myStanding(db, day, id);
-    if (st.minutes < QUALIFY) st.rank = null;
+    const row = await db.prepare(`${PER} SELECT minutes, sessions FROM per WHERE id = ?`).bind(from, to, id).first();
+    const st = { minutes: row ? row.minutes : 0, sessions: row ? row.sessions : 0, rank: null };
+    if (st.minutes >= QUALIFY) {
+      const ahead = await db.prepare(`${PER} SELECT COUNT(*) AS n FROM per WHERE minutes > ?`).bind(from, to, st.minutes).first();
+      st.rank = ahead.n + 1;
+    }
     me = { ...st, name: u ? u.name : null, country: u ? u.country : (request.cf && request.cf.country) || null };
   }
-  const nextReset = Date.parse(day + 'T00:00:00Z') + 86400000;
-  return json({ day, resetsInMs: nextReset - now, qualify: QUALIFY, total, top: top.results, countries: countries.results, me });
+  return json({ period, day: to, from, to, resetsInMs: next - now, qualify: QUALIFY, total, top: top.results, countries: countries.results, me });
 }
 
 export async function onRequestPost({ request, env }) {

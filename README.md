@@ -12,7 +12,7 @@
 - 🔔 **Chimes** on every phase change (silent on the very first start)
 - 🪟 **Pop-out mini timer** that stays on top of other windows, even when the browser is minimized (Document Picture-in-Picture, with a video PiP fallback)
 - ⚙️ **Custom durations** for focus, break, long break and long-break interval, plus presets 25/5/15 · 50/10/30 · 90/20/30
-- 🌍 **Daily world ranking** — the top 20 people who studied 2+ hours today, plus a country ranking
+- 🌍 **World ranking by day, week or month** — the top 20 people with 2+ hours in the period, plus a country ranking
 - 🈯 **Four languages** — English, Korean, Japanese, Chinese
 - 📊 **Live country board** — visits and total focus time per country under the timer, refreshed every 15 seconds; rows slide to their new place when the ranking changes
 
@@ -31,7 +31,7 @@ wrangler.toml             Cloudflare configuration
 
 **Timer.** Remaining time is computed from an end timestamp, and ticks come from a Web Worker, so the countdown stays accurate when the tab is in the background or minimized.
 
-**Ranking.** When you press Start, the server records the time on its own clock. When you pause, finish a phase, restart or close the page, the client reports the focus minutes since then. The server never credits more than the time that actually elapsed (plus one minute of slack), at most 180 minutes per report and 960 minutes per day, so spamming Start/Stop or editing requests cannot inflate the total. Only people with 120+ minutes in the current UTC day are listed, top 20.
+**Ranking.** When you press Start, the server records the time on its own clock. When you pause, finish a phase, restart or close the page, the client reports the focus minutes since then. The server never credits more than the time that actually elapsed (plus one minute of slack), at most 180 minutes per report and 960 minutes per day, so spamming Start/Stop or editing requests cannot inflate the total. Only people with 120+ minutes in the selected period are listed, top 20. Periods are the current UTC day, the week from Monday, and the month from the 1st.
 
 **Stats.** Each browser records at most one visit per UTC day (browser UUID, day and country only). The board under the timer shows all-time visits and the top 10 countries ranked by total focus minutes (from the ranking table), with each country's visits.
 
